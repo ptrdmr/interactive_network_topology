@@ -1,0 +1,303 @@
+# Concourse Bowling — Interactive Network & Device Map
+
+## Project Brief for AI-Assisted IDE
+
+You are building an interactive network infrastructure map for a bowling entertainment venue. The app visualizes device locations on an SVG floor plan with toggleable layers, click-to-inspect device panels, and a searchable device registry. It serves as a single living document replacing scattered spreadsheets and static diagrams.
+
+---
+
+## Tech Stack
+
+### Core
+- **Next.js 15** (App Router — `app/`)
+- **React 19**
+- **TypeScript** (strict mode)
+- **Tailwind CSS v4** (`@import "tailwindcss"` in `app/globals.css`, `@tailwindcss/postcss`, `@theme inline` for dark palette and tokens)
+
+### Libraries
+- **Recharts** — for any summary/statistics charts (device counts per zone, etc.)
+- **Lucide React** — icons throughout the UI
+- **@tailwindcss/typography** — prose styling for device detail descriptions
+
+### Data Layer
+- All device and floor plan data lives in local JSON files under `data/`
+- No database, no API routes — this is a static-data app for now
+- Structure the JSON so it could later be swapped for a database or spreadsheet export with zero component changes
+
+---
+
+## Architecture
+
+```
+app/
+├── layout.tsx              # Root layout, dark theme, sidebar shell
+├── page.tsx                # Main map view (default route)
+├── globals.css             # Tailwind v4 imports + theme tokens
+components/
+├── map/
+│   ├── FloorPlanSVG.tsx    # The base SVG floor plan (inline SVG component)
+│   ├── DeviceMarker.tsx    # Individual device pin/icon on the map
+│   ├── DeviceCluster.tsx   # Grouped markers when zoomed out (optional)
+│   ├── MapCanvas.tsx       # Pan/zoom wrapper around the floor plan + markers
+│   └── MapControls.tsx     # Zoom buttons, reset view
+├── layers/
+│   ├── LayerToggle.tsx     # Individual layer switch (icon + label + toggle)
+│   └── LayerPanel.tsx      # Sidebar panel listing all available layers
+├── devices/
+│   ├── DeviceDetailPanel.tsx   # Slide-out panel when a device is clicked
+│   ├── DeviceTable.tsx         # Searchable/filterable table view of all devices
+│   └── DeviceCard.tsx          # Summary card used in search results & lists
+├── ui/
+│   ├── Sidebar.tsx         # App sidebar shell
+│   ├── SearchBar.tsx       # Global device search (name, IP, location, type)
+│   └── Badge.tsx           # Status badges (online/offline/maintenance)
+hooks/
+├── useDeviceData.ts        # Loads and provides device data from JSON
+├── useLayerState.ts        # Manages which layers are visible (persisted to localStorage)
+├── useMapTransform.ts      # Pan/zoom state for the map canvas
+├── useDeviceSearch.ts      # Fuzzy search/filter logic across all devices
+data/
+├── devices.json            # Master device registry
+├── zones.json              # Floor plan zones/rooms with coordinates
+├── layers.json             # Layer definitions (name, color, icon, device types)
+├── connections.json        # Network topology — which devices connect to what (optional phase 2)
+types/
+├── device.ts               # Device type definitions
+├── zone.ts                 # Zone/room type definitions
+├── layer.ts                # Layer type definitions
+```
+
+---
+
+## Data Schema
+
+### `devices.json`
+```jsonc
+[
+  {
+    "id": "pos-lane-01",
+    "name": "Lane 1 POS Terminal",
+    "type": "pos_terminal",           // maps to a layer
+    "category": "point_of_sale",      // broad grouping
+    "zone": "lanes_east",             // references zones.json
+    "position": { "x": 340, "y": 580 },  // SVG coordinate on floor plan
+    "network": {
+      "ip": "192.168.1.101",
+      "mac": "AA:BB:CC:DD:EE:01",
+      "switch": "sw-server-room-01",  // references another device ID
+      "port": "Gi0/12",
+      "vlan": 10
+    },
+    "hardware": {
+      "make": "Epson",
+      "model": "TM-T88VI",
+      "serial": "XYZ123456",
+      "asset_tag": "CB-POS-001"
+    },
+    "status": "online",               // online | offline | maintenance
+    "notes": "Replaced receipt printer module Jan 2026",
+    "installed": "2024-03-15",
+    "lastServiced": "2026-01-20"
+  }
+]
+```
+
+### `zones.json`
+```jsonc
+[
+  {
+    "id": "lanes_east",
+    "name": "Lanes 1–16 (East)",
+    "description": "Main bowling lanes, east side",
+    "bounds": {                        // SVG path or bounding box
+      "type": "rect",
+      "x": 200, "y": 400,
+      "width": 600, "height": 300
+    },
+    "color": "#1a2a3a"                 // subtle fill for the zone on the map
+  }
+]
+```
+
+### `layers.json`
+```jsonc
+[
+  {
+    "id": "pos_terminals",
+    "name": "POS Terminals",
+    "icon": "Monitor",                 // Lucide icon name
+    "color": "#22c55e",                // green — marker color for this layer
+    "deviceTypes": ["pos_terminal"],   // which device types belong to this layer
+    "defaultVisible": true
+  },
+  {
+    "id": "network_switches",
+    "name": "Network Switches",
+    "icon": "Network",
+    "color": "#3b82f6",
+    "deviceTypes": ["switch", "router", "firewall"],
+    "defaultVisible": true
+  },
+  {
+    "id": "printers",
+    "name": "Printers & Ticket Printers",
+    "icon": "Printer",
+    "color": "#f59e0b",
+    "deviceTypes": ["receipt_printer", "ticket_printer", "office_printer"],
+    "defaultVisible": false
+  },
+  {
+    "id": "tablets",
+    "name": "Tablets & Displays",
+    "icon": "Tablet",
+    "color": "#a855f7",
+    "deviceTypes": ["tablet", "display", "scoring_monitor"],
+    "defaultVisible": false
+  },
+  {
+    "id": "audio_visual",
+    "name": "Audio / Visual",
+    "icon": "Speaker",
+    "color": "#ef4444",
+    "deviceTypes": ["speaker", "amplifier", "projector", "tv"],
+    "defaultVisible": false
+  },
+  {
+    "id": "infrastructure",
+    "name": "Infrastructure",
+    "icon": "Server",
+    "color": "#64748b",
+    "deviceTypes": ["server", "ups", "patch_panel", "access_point"],
+    "defaultVisible": false
+  }
+]
+```
+
+---
+
+## Theme & Design Tokens
+
+Use a dark theme consistent with a professional operations dashboard. Define in `globals.css` under `@theme inline`:
+
+```css
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg-primary: #0a0f1a;
+  --color-bg-secondary: #111827;
+  --color-bg-card: #1a2332;
+  --color-bg-hover: #243044;
+  --color-border: #2a3a4a;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-accent: #2E7D32;            /* Concourse green */
+  --color-accent-light: #4CAF50;
+  --color-status-online: #22c55e;
+  --color-status-offline: #ef4444;
+  --color-status-maintenance: #f59e0b;
+}
+```
+
+### Design Principles
+- Dark background with muted zone fills so device markers POP
+- Each layer has a distinct, saturated color for its markers
+- Sidebar is collapsible on smaller screens
+- Device detail panel slides in from the right as an overlay
+- Subtle grid pattern or blueprint aesthetic on the map background
+- Status indicators use color + icon (accessible, not color-only)
+
+---
+
+## Key Interactions
+
+### Map
+- **Pan & zoom** — mouse drag to pan, scroll wheel to zoom, pinch on mobile
+- **Device markers** — colored circles/icons based on layer, pulse animation if status is "maintenance"
+- **Hover** — tooltip with device name + IP
+- **Click** — opens DeviceDetailPanel
+
+### Layer Toggles
+- Checkboxes or toggle switches in the sidebar
+- Toggling a layer shows/hides all device markers of that type with a fade transition
+- "Show All" / "Hide All" buttons at the top
+- Layer toggle state persists to localStorage
+
+### Device Detail Panel
+- Slides in from right
+- Shows all fields from the device JSON
+- "Connected to" link that highlights the upstream switch on the map
+- Close button + click-outside-to-close
+
+### Device Table View
+- Alternate view (tab or route) showing all devices in a sortable, filterable table
+- Columns: Name, Type, Zone, IP, Status, Last Serviced
+- Click a row to fly to that device on the map
+
+### Search
+- Global search bar in the sidebar header
+- Searches across: name, IP, MAC, zone, type, notes
+- Results shown as DeviceCards in the sidebar
+- Click a result to fly to it on the map and open its detail panel
+
+---
+
+## Floor Plan SVG Strategy
+
+The floor plan is an inline SVG component (`FloorPlanSVG.tsx`). For initial development:
+
+1. **Start with a placeholder rectangle layout** representing zones (server room, lanes, bar/cafe, front desk, office, arcade area)
+2. **Each zone is a `<rect>` or `<path>`** with its ID matching `zones.json`
+3. **Device markers are rendered as a separate layer ON TOP of the floor plan SVG** (not embedded inside it) — this lets us control z-index and interactions independently
+4. **The coordinate system** uses a fixed viewBox (e.g., `0 0 1200 800`) that both the floor plan and device positions reference
+
+Later, the placeholder shapes can be replaced with an actual traced floor plan SVG without touching any other code.
+
+---
+
+## Phase 1 Deliverables (Build This Now)
+
+1. App shell with sidebar + map canvas
+2. Placeholder floor plan SVG with labeled zones
+3. Device markers rendering from `devices.json` with correct positions
+4. Layer toggle panel that shows/hides device types
+5. Device detail slide-out panel on click
+6. Global search
+7. Responsive layout (sidebar collapses on mobile)
+
+## Phase 2 (Future)
+
+- Network topology lines (switch → device connections drawn on map)
+- Device table view with sort/filter
+- Import from CSV/Excel to update `devices.json`
+- Print-friendly view for posting in server room
+- Audit log (last edited, by whom)
+
+---
+
+## Placeholder Data
+
+Seed `devices.json` with ~15-20 realistic devices for a bowling entertainment venue:
+- 4 POS terminals (lanes area, bar, cafe, front desk)
+- 2 network switches (server room)
+- 1 router + 1 firewall (server room)
+- 3 receipt/ticket printers (front desk, bar, lanes)
+- 4 tablets (lane-side ordering)
+- 2 scoring system displays
+- 1 server (server room)
+- 1 UPS (server room)
+- 2 wireless access points (ceiling mounted — lanes area, bar/arcade)
+
+Give them realistic IPs in the `192.168.1.x` and `192.168.2.x` ranges across two VLANs.
+
+---
+
+## Notes for the AI IDE
+
+- Do NOT use `pages/` router — this is App Router only (`app/`)
+- Tailwind v4 syntax: use `@import "tailwindcss"` not `@tailwind base` directives
+- All components are client components where state is needed (`"use client"`)
+- Keep the SVG floor plan as a React component, not a static `.svg` file, so zones can respond to hover/click
+- The JSON data files in `data/` should be imported directly — no fetch calls needed for static data
+- Prefer Lucide React icons over raw SVGs for UI elements
+- Use CSS transitions (not framer-motion) to keep the dependency list lean

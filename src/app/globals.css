@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg-primary: #0a0f1a;
+  --color-bg-secondary: #111827;
+  --color-bg-card: #1a2332;
+  --color-bg-hover: #243044;
+  --color-border: #2a3a4a;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-accent: #2E7D32;
+  --color-accent-light: #4CAF50;
+  --color-status-online: #22c55e;
+  --color-status-offline: #ef4444;
+  --color-status-maintenance: #f59e0b;
+
+  --color-layer-pos: #22c55e;
+  --color-layer-network: #3b82f6;
+  --color-layer-printers: #f59e0b;
+  --color-layer-tablets: #a855f7;
+  --color-layer-av: #ef4444;
+  --color-layer-infrastructure: #64748b;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+/* Blueprint grid pattern for map background */
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgba(42, 58, 74, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 58, 74, 0.3) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Pulse animation for maintenance status markers */
+@keyframes pulse-marker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
+.animate-pulse-marker {
+  animation: pulse-marker 2s ease-in-out infinite;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}
