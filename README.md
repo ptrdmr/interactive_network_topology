@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Concourse — Interactive Network Map
 
-## Getting Started
+**Your floor plan isn’t a static diagram anymore — it’s a living map of everything you run.**
 
-First, run the development server:
+Concourse is a blueprint-style network topology canvas: drop devices on a real floor plan, organize them into layers, and document what each piece actually does — without wrestling with a full CMDB. Built for people who need *clarity at a glance* and *notes that travel with the gear*.
+
+### Why it’s different
+
+- **Layers that mean something** — Group access points, drops, racks, or anything else; color-code them and write layer-level context.
+- **Click to place, click to learn** — Pick an active layer, click the map, fill in the story. No spreadsheet required.
+- **Server rack mode** — Mark a layer as a rack layer: one dot on the map is an enclosure; stack units inside with a visual rack layout and per-unit docs.
+- **Reposition with precision** — Arrow keys nudge markers (Shift for bigger steps) when you’re fine-tuning layout.
+- **Your data stays yours** — Everything persists in the browser (`localStorage`). Export or import JSON when you need a backup or a handoff.
+
+Stack: [Next.js](https://nextjs.org) (App Router), React, TypeScript, Tailwind-friendly styling.
+
+---
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # production build
+npm run start   # run production server locally
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Deploy
 
-To learn more about Next.js, take a look at the following resources:
+Deploy anywhere that hosts static or Node Next.js apps (e.g. [Vercel](https://vercel.com)). Map data is client-side only unless you add your own backend.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*Draw the network. Document the reality. Ship it.*
