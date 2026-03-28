@@ -15,6 +15,7 @@ interface MapCanvasProps {
   layers: Layer[];
   selectedDeviceId: string | null;
   onDeviceClick: (device: Device) => void;
+  floorPlanImageHref: string;
   /** When set, map click places a device (unless dev mode is on). */
   placeMode?: boolean;
   onPlaceAt?: (position: { x: number; y: number }) => void;
@@ -30,6 +31,7 @@ export function MapCanvas({
   layers,
   selectedDeviceId,
   onDeviceClick,
+  floorPlanImageHref,
   placeMode,
   onPlaceAt,
   repositionMode,
@@ -97,6 +99,7 @@ export function MapCanvas({
               layers={layers}
               selectedDeviceId={selectedDeviceId}
               onDeviceClick={onDeviceClick}
+              floorPlanImageHref={floorPlanImageHref}
               devMode={devMode}
               placeMode={placeMode && !devMode}
               onSvgClick={handleSvgClick}

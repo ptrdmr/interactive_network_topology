@@ -1,44 +1,45 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Layer } from "@/types/layer";
 import type { Device } from "@/types/device";
+import { normalizeFloorPlanImage } from "@/lib/floorPlanImage";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import {
+  emptyPersistedMapState,
+  parsePersistedMapState,
+  fetchMapStateFromSupabase,
+  saveMapStateToSupabase,
+  type PersistedMapState,
+} from "@/lib/supabase/mapState";
 
 const STORAGE_KEY = "concourse-map-data";
+const SUPABASE_SAVE_DEBOUNCE_MS = 800;
 
-interface PersistedState {
-  layers: Layer[];
-  devices: Device[];
-}
-
-function normalizeLayer(raw: Layer): Layer {
-  return {
-    ...raw,
-    kind: raw.kind === "server" ? "server" : "standard",
-  };
-}
-
-function loadFromStorage(): PersistedState {
+function loadFromStorage(): PersistedMapState {
   if (typeof window === "undefined") {
-    return { layers: [], devices: [] };
+    return emptyPersistedMapState();
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { layers: [], devices: [] };
-    const parsed = JSON.parse(raw) as PersistedState;
-    const layers = Array.isArray(parsed.layers)
-      ? parsed.layers.map((l) => normalizeLayer(l as Layer))
-      : [];
-    const devices = Array.isArray(parsed.devices) ? parsed.devices : [];
-    return { layers, devices };
+    if (!raw) return emptyPersistedMapState();
+    const parsed = JSON.parse(raw) as unknown;
+    return parsePersistedMapState(parsed) ?? emptyPersistedMapState();
   } catch {
-    return { layers: [], devices: [] };
+    return emptyPersistedMapState();
   }
 }
 
-function saveToStorage(layers: Layer[], devices: Device[]) {
+function saveToStorage(
+  layers: Layer[],
+  devices: Device[],
+  floorPlanDataUrl: string | null
+) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ layers, devices }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ layers, devices, floorPlanDataUrl })
+    );
   } catch {
     // ignore quota / private mode
   }
@@ -51,20 +52,66 @@ function newId(prefix: string): string {
 export function useAppState() {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
+  const [floorPlanDataUrl, setFloorPlanDataUrl] = useState<string | null>(null);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cloudSyncEnabled = isSupabaseConfigured();
 
   useEffect(() => {
-    const { layers: l, devices: d } = loadFromStorage();
-    setLayers(l);
-    setDevices(d);
-    setHydrated(true);
-  }, []);
+    let cancelled = false;
+
+    (async () => {
+      const local = loadFromStorage();
+      let initial: PersistedMapState = local;
+
+      if (cloudSyncEnabled) {
+        const remote = await fetchMapStateFromSupabase();
+        if (!cancelled && remote) {
+          initial = remote;
+          saveToStorage(
+            remote.layers,
+            remote.devices,
+            remote.floorPlanDataUrl ?? null
+          );
+        }
+      }
+
+      if (cancelled) return;
+      setLayers(initial.layers);
+      setDevices(initial.devices);
+      setFloorPlanDataUrl(initial.floorPlanDataUrl ?? null);
+      setHydrated(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudSyncEnabled]);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveToStorage(layers, devices);
-  }, [layers, devices, hydrated]);
+    saveToStorage(layers, devices, floorPlanDataUrl);
+  }, [layers, devices, floorPlanDataUrl, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !cloudSyncEnabled) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void saveMapStateToSupabase({
+        layers,
+        devices,
+        floorPlanDataUrl: floorPlanDataUrl ?? null,
+      });
+    }, SUPABASE_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [layers, devices, floorPlanDataUrl, hydrated, cloudSyncEnabled]);
 
   const layerById = useCallback(
     (id: string) => layers.find((x) => x.id === id),
@@ -89,7 +136,6 @@ export function useAppState() {
     [devices]
   );
 
-  /** Devices that reference this device id in any property value */
   const connectedTo = useCallback(
     (deviceId: string) =>
       devices.filter(
@@ -109,7 +155,6 @@ export function useAppState() {
     );
   }, [devices, layers]);
 
-  /** Map-visible devices only (excludes rack units slotted inside a server enclosure). */
   const deviceCountByLayer = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const l of layers) {
@@ -183,7 +228,11 @@ export function useAppState() {
   }, []);
 
   const exportJson = useCallback(() => {
-    const data: PersistedState = { layers, devices };
+    const data: PersistedMapState = {
+      layers,
+      devices,
+      floorPlanDataUrl: floorPlanDataUrl ?? null,
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -193,22 +242,22 @@ export function useAppState() {
     a.download = `concourse-map-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [layers, devices]);
+  }, [layers, devices, floorPlanDataUrl]);
 
   const importJson = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          const parsed = JSON.parse(reader.result as string) as PersistedState;
-          if (!parsed.layers || !parsed.devices) {
+          const parsed = JSON.parse(reader.result as string) as unknown;
+          const state = parsePersistedMapState(parsed);
+          if (!state) {
             reject(new Error("Invalid file: expected layers and devices"));
             return;
           }
-          setLayers(
-            parsed.layers.map((l) => normalizeLayer(l as Layer))
-          );
-          setDevices(parsed.devices);
+          setLayers(state.layers);
+          setDevices(state.devices);
+          setFloorPlanDataUrl(state.floorPlanDataUrl ?? null);
           setActiveLayerId(null);
           resolve();
         } catch (e) {
@@ -223,15 +272,30 @@ export function useAppState() {
   const resetAll = useCallback(() => {
     setLayers([]);
     setDevices([]);
+    setFloorPlanDataUrl(null);
     setActiveLayerId(null);
+  }, []);
+
+  const clearFloorPlan = useCallback(() => {
+    setFloorPlanDataUrl(null);
+  }, []);
+
+  const uploadFloorPlanFromFile = useCallback(async (file: File) => {
+    const dataUrl = await normalizeFloorPlanImage(file);
+    setFloorPlanDataUrl(dataUrl);
   }, []);
 
   return {
     layers,
     devices,
+    floorPlanDataUrl,
+    setFloorPlanDataUrl,
+    clearFloorPlan,
+    uploadFloorPlanFromFile,
     activeLayerId,
     setActiveLayerId,
     hydrated,
+    cloudSyncEnabled,
     layerById,
     deviceById,
     childrenOf,

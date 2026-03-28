@@ -14,6 +14,8 @@ import { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH } from "@/constants/floorPlan";
 
 const zones: Zone[] = [];
 
+const DEFAULT_FLOOR_PLAN_HREF = "/floor-plan.jpg";
+
 const REPOSITION_STEP = 4;
 const REPOSITION_SHIFT_MULT = 5;
 
@@ -42,6 +44,10 @@ export default function Home() {
     deleteDevice,
     exportJson,
     importJson,
+    floorPlanDataUrl,
+    uploadFloorPlanFromFile,
+    clearFloorPlan,
+    cloudSyncEnabled,
   } = useAppState();
 
   const [search, setSearch] = useState("");
@@ -279,6 +285,10 @@ export default function Home() {
         stats={stats}
         onExport={exportJson}
         onImport={importJson}
+        cloudSyncEnabled={cloudSyncEnabled}
+        hasCustomFloorPlan={!!floorPlanDataUrl}
+        onFloorPlanUpload={uploadFloorPlanFromFile}
+        onFloorPlanReset={clearFloorPlan}
       />
 
       <main className="flex-1 ml-0 md:ml-80 h-full transition-all duration-300">
@@ -288,6 +298,7 @@ export default function Home() {
           layers={layers}
           selectedDeviceId={selectedDeviceId}
           onDeviceClick={handleDeviceClick}
+          floorPlanImageHref={floorPlanDataUrl ?? DEFAULT_FLOOR_PLAN_HREF}
           placeMode={!!activeLayerId}
           onPlaceAt={handlePlaceAt}
           repositionMode={repositionMode}

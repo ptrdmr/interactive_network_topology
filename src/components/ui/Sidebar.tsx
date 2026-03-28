@@ -5,6 +5,7 @@ import { PanelLeftClose, PanelLeft, MapPin } from "lucide-react";
 import { SearchBar } from "./SearchBar";
 import { LayerPanel } from "@/components/layers/LayerPanel";
 import { ExportImport } from "./ExportImport";
+import { FloorPlanUpload } from "./FloorPlanUpload";
 import type { Layer } from "@/types/layer";
 
 interface SidebarProps {
@@ -24,6 +25,10 @@ interface SidebarProps {
   stats?: { total: number; online: number; offline: number; maintenance: number };
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
+  cloudSyncEnabled?: boolean;
+  hasCustomFloorPlan: boolean;
+  onFloorPlanUpload: (file: File) => Promise<void>;
+  onFloorPlanReset: () => void;
 }
 
 export function Sidebar({
@@ -43,6 +48,10 @@ export function Sidebar({
   stats,
   onExport,
   onImport,
+  cloudSyncEnabled,
+  hasCustomFloorPlan,
+  onFloorPlanUpload,
+  onFloorPlanReset,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -145,7 +154,18 @@ export function Sidebar({
 
             <div className="flex-1 min-h-4" />
 
+            <FloorPlanUpload
+              hasCustomFloorPlan={hasCustomFloorPlan}
+              onUpload={onFloorPlanUpload}
+              onReset={onFloorPlanReset}
+            />
+
             <ExportImport onExport={onExport} onImport={onImport} />
+            {cloudSyncEnabled && (
+              <p className="text-[10px] text-text-muted px-1 -mt-2">
+                Cloud sync: map data is saved to Supabase (shared for all visitors).
+              </p>
+            )}
           </div>
         )}
       </aside>

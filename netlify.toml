@@ -1,0 +1,18 @@
+# Netlify deployment for Next.js (App Router).
+# Docs: https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/
+#
+# Set these in the Netlify UI (never commit secrets):
+#   Site configuration → Environment variables → Add variable
+#     NEXT_PUBLIC_SUPABASE_URL   = https://YOUR-PROJECT.supabase.co
+#     NEXT_PUBLIC_SUPABASE_ANON_KEY = your anon / publishable key
+# Apply to Production and Preview scopes, then trigger a new deploy.
+
+[build]
+  command = "npm run build"
+  # Do not set "publish" — the Next.js adapter emits the right output.
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

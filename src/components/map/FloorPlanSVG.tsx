@@ -14,6 +14,8 @@ interface FloorPlanSVGProps {
   layers: Layer[];
   selectedDeviceId: string | null;
   onDeviceClick: (device: Device) => void;
+  /** Bundled path or data URL from upload */
+  floorPlanImageHref: string;
   devMode?: boolean;
   placeMode?: boolean;
   onSvgClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -32,6 +34,7 @@ export function FloorPlanSVG({
   layers,
   selectedDeviceId,
   onDeviceClick,
+  floorPlanImageHref,
   devMode,
   placeMode,
   onSvgClick,
@@ -57,11 +60,12 @@ export function FloorPlanSVG({
     >
       {/* Floor plan image underlay */}
       <image
-        href="/floor-plan.jpg"
+        href={floorPlanImageHref}
         x="0"
         y="0"
         width={IMG_WIDTH}
         height={IMG_HEIGHT}
+        preserveAspectRatio="none"
         style={{ opacity: 0.45 }}
       />
 
