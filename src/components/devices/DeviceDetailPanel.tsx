@@ -13,6 +13,7 @@ import {
   Network,
 } from "lucide-react";
 import type { Device } from "@/types/device";
+import { DEVICE_TYPE_LABELS } from "@/constants/deviceTypes";
 import type { LayerKind } from "@/types/layer";
 import { Badge } from "@/components/ui/Badge";
 import { ServerRackStack } from "./ServerRackStack";
@@ -119,6 +120,9 @@ export function DeviceDetailPanel({
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <Badge status={device.status} />
             <span className="text-xs text-text-muted">{layerName}</span>
+            <span className="text-[10px] text-text-muted/90 px-1.5 py-0.5 rounded bg-bg-card border border-border/50">
+              {DEVICE_TYPE_LABELS[device.deviceTypeId]}
+            </span>
             {layerKind === "server" && !device.parentId && (
               <span className="text-[10px] uppercase tracking-wide text-accent-light font-semibold">
                 Enclosure

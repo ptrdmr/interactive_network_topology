@@ -4,7 +4,10 @@ import type { Device, DeviceStatus } from "@/types/device";
 
 interface DeviceMarkerProps {
   device: Device;
-  color: string;
+  /** Fill color from device type (+ optional user overrides). */
+  fillColor: string;
+  /** Stroke color from map layer (outer ring). */
+  layerRingColor: string;
   isSelected: boolean;
   onClick: (device: Device) => void;
 }
@@ -23,7 +26,13 @@ function tooltipTitle(device: Device): string {
   return device.name;
 }
 
-export function DeviceMarker({ device, color, isSelected, onClick }: DeviceMarkerProps) {
+export function DeviceMarker({
+  device,
+  fillColor,
+  layerRingColor,
+  isSelected,
+  onClick,
+}: DeviceMarkerProps) {
   const r = isSelected ? 14 : 10;
 
   return (
@@ -48,7 +57,18 @@ export function DeviceMarker({ device, color, isSelected, onClick }: DeviceMarke
         />
       )}
 
-      {/* Outer status ring */}
+      {/* Layer ring (map layer color) — outermost semantic ring */}
+      <circle
+        cx={device.position.x}
+        cy={device.position.y}
+        r={r + 8}
+        fill="none"
+        stroke={layerRingColor}
+        strokeWidth="2.5"
+        opacity="0.95"
+      />
+
+      {/* Status ring (offline / maintenance) */}
       {device.status !== "online" && (
         <circle
           cx={device.position.x}
@@ -69,22 +89,21 @@ export function DeviceMarker({ device, color, isSelected, onClick }: DeviceMarke
           fill="none"
           stroke="#ffffff"
           strokeWidth="2"
-          opacity="0.8"
+          opacity="0.85"
         />
       )}
 
-      {/* Main marker */}
+      {/* Main marker — device type fill */}
       <circle
         cx={device.position.x}
         cy={device.position.y}
         r={r}
-        fill={color}
+        fill={fillColor}
         stroke="#0a0f1a"
         strokeWidth="2.5"
         opacity="0.95"
       />
 
-      {/* Inner dot */}
       <circle
         cx={device.position.x}
         cy={device.position.y}

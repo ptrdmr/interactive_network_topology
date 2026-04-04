@@ -1,11 +1,14 @@
 import type { Layer } from "@/types/layer";
 import type { Device, PortSlot } from "@/types/device";
 import type { FloorPlanDocument } from "@/types/floorPlan";
+import { normalizeDeviceTypeId } from "@/constants/deviceTypes";
 import { getSupabaseBrowserClient } from "./client";
 
 export interface PersistedMapState {
   floorPlans: FloorPlanDocument[];
   activeFloorPlanId: string | null;
+  /** User overrides for device type fill colors (hex). Keys are deviceTypeId. */
+  deviceTypeColorOverrides: Record<string, string>;
 }
 
 function newFloorPlanId(): string {
@@ -25,6 +28,7 @@ export function emptyPersistedMapState(): PersistedMapState {
       },
     ],
     activeFloorPlanId: id,
+    deviceTypeColorOverrides: {},
   };
 }
 
@@ -50,10 +54,25 @@ function normalizeDevice(raw: Device): Device {
   const portSlots = Array.isArray((raw as { portSlots?: unknown }).portSlots)
     ? (raw as { portSlots: unknown[] }).portSlots.map(normalizePortSlot)
     : [];
+  const deviceTypeId = normalizeDeviceTypeId(
+    (raw as { deviceTypeId?: unknown }).deviceTypeId
+  );
   return {
     ...raw,
+    deviceTypeId,
     portSlots,
   };
+}
+
+function normalizeDeviceTypeColorOverrides(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v.trim())) {
+      out[k] = v.trim();
+    }
+  }
+  return out;
 }
 
 function normalizeFloorPlanDocument(raw: unknown): FloorPlanDocument | null {
@@ -99,13 +118,23 @@ function migrateLegacyV1(o: Record<string, unknown>): PersistedMapState {
       },
     ],
     activeFloorPlanId: id,
+    deviceTypeColorOverrides: normalizeDeviceTypeColorOverrides(
+      o.deviceTypeColorOverrides
+    ),
   };
 }
 
 function ensureAtLeastOneFloor(state: PersistedMapState): PersistedMapState {
-  if (state.floorPlans.length > 0) return state;
+  const overrides =
+    state.deviceTypeColorOverrides &&
+    typeof state.deviceTypeColorOverrides === "object"
+      ? normalizeDeviceTypeColorOverrides(state.deviceTypeColorOverrides)
+      : {};
+  const base: PersistedMapState = { ...state, deviceTypeColorOverrides: overrides };
+  if (state.floorPlans.length > 0) return base;
   const id = newFloorPlanId();
   return {
+    ...base,
     floorPlans: [
       {
         id,
@@ -137,7 +166,14 @@ export function parsePersistedMapState(raw: unknown): PersistedMapState | null {
     if (!activeFloorPlanId || !floorPlans.some((fp) => fp.id === activeFloorPlanId)) {
       activeFloorPlanId = floorPlans[0].id;
     }
-    return ensureAtLeastOneFloor({ floorPlans, activeFloorPlanId });
+    const deviceTypeColorOverrides = normalizeDeviceTypeColorOverrides(
+      o.deviceTypeColorOverrides
+    );
+    return ensureAtLeastOneFloor({
+      floorPlans,
+      activeFloorPlanId,
+      deviceTypeColorOverrides,
+    });
   }
 
   return null;
@@ -174,6 +210,7 @@ export async function saveMapStateToSupabase(
     data: {
       floorPlans: state.floorPlans,
       activeFloorPlanId: state.activeFloorPlanId,
+      deviceTypeColorOverrides: state.deviceTypeColorOverrides,
     },
     updated_at: new Date().toISOString(),
   };

@@ -3,6 +3,7 @@
 import type { Zone } from "@/types/zone";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
+import type { DeviceTypeId } from "@/constants/deviceTypes";
 import { DeviceMarker } from "./DeviceMarker";
 import { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH } from "@/constants/floorPlan";
 
@@ -16,6 +17,8 @@ interface FloorPlanSVGProps {
   onDeviceClick: (device: Device) => void;
   /** Bundled path or data URL from upload */
   floorPlanImageHref: string;
+  /** Resolve device type fill color (defaults + user overrides). */
+  resolveDeviceTypeColor: (typeId: DeviceTypeId) => string;
   devMode?: boolean;
   placeMode?: boolean;
   onSvgClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -35,13 +38,14 @@ export function FloorPlanSVG({
   selectedDeviceId,
   onDeviceClick,
   floorPlanImageHref,
+  resolveDeviceTypeColor,
   devMode,
   placeMode,
   onSvgClick,
   onSvgMouseDown,
   svgRef,
 }: FloorPlanSVGProps) {
-  const colorForDevice = (device: Device): string => {
+  const layerRingForDevice = (device: Device): string => {
     const layer = layers.find((l) => l.id === device.layerId);
     return layer?.color ?? "#64748b";
   };
@@ -113,7 +117,8 @@ export function FloorPlanSVG({
         <DeviceMarker
           key={device.id}
           device={device}
-          color={colorForDevice(device)}
+          fillColor={resolveDeviceTypeColor(device.deviceTypeId)}
+          layerRingColor={layerRingForDevice(device)}
           isSelected={selectedDeviceId === device.id}
           onClick={onDeviceClick}
         />

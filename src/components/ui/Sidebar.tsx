@@ -1,23 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { PanelLeftClose, PanelLeft, MapPin } from "lucide-react";
+import Link from "next/link";
+import { PanelLeftClose, PanelLeft, MapPin, LayoutGrid } from "lucide-react";
 import { SearchBar } from "./SearchBar";
 import { LayerPanel } from "@/components/layers/LayerPanel";
 import { ExportImport } from "./ExportImport";
 import { FloorPlanUpload } from "./FloorPlanUpload";
-import { FloorPlanPicker } from "./FloorPlanPicker";
 import type { Layer } from "@/types/layer";
-import type { FloorPlanDocument } from "@/types/floorPlan";
 
 interface SidebarProps {
-  floorPlans: FloorPlanDocument[];
-  activeFloorPlanId: string | null;
+  /** Current floor name (map view). */
   activeFloorName: string;
-  onSelectFloor: (id: string) => void;
-  onAddFloor: () => void;
-  onRenameFloor: (id: string, name: string) => void;
-  onDeleteFloor: (id: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
   layers: Layer[];
@@ -41,13 +35,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  floorPlans,
-  activeFloorPlanId,
   activeFloorName,
-  onSelectFloor,
-  onAddFloor,
-  onRenameFloor,
-  onDeleteFloor,
   search,
   onSearchChange,
   layers,
@@ -100,7 +88,7 @@ export function Sidebar({
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-sm font-bold truncate tracking-wide">CONCOURSE</h1>
-                  <p className="text-xs text-text-muted truncate">Network Map</p>
+                  <p className="text-xs text-text-muted truncate">{activeFloorName}</p>
                 </div>
               </div>
               <button
@@ -116,14 +104,13 @@ export function Sidebar({
         {/* Content — hidden when collapsed on desktop */}
         {!collapsed && (
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 flex flex-col min-h-0">
-            <FloorPlanPicker
-              floorPlans={floorPlans}
-              activeFloorPlanId={activeFloorPlanId}
-              onSelectFloor={onSelectFloor}
-              onAddFloor={onAddFloor}
-              onRenameFloor={onRenameFloor}
-              onDeleteFloor={onDeleteFloor}
-            />
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-bg-card text-sm font-medium text-text-primary hover:bg-bg-hover hover:border-accent/40 transition-colors"
+            >
+              <LayoutGrid className="w-4 h-4 shrink-0 text-accent-light" />
+              All floor plans
+            </Link>
 
             {/* Search */}
             <SearchBar value={search} onChange={onSearchChange} />

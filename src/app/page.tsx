@@ -1,461 +1,86 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { Sidebar } from "@/components/ui/Sidebar";
-import { MapCanvas } from "@/components/map/MapCanvas";
-import { DeviceDetailPanel } from "@/components/devices/DeviceDetailPanel";
-import { DeviceForm } from "@/components/devices/DeviceForm";
-import { LayerForm } from "@/components/layers/LayerForm";
+import { useCallback } from "react";
+import Link from "next/link";
+import { MapPin, Palette } from "lucide-react";
+import { FloorPlansHome } from "@/components/home/FloorPlansHome";
+import { ExportImport } from "@/components/ui/ExportImport";
 import { useAppState } from "@/hooks/useAppState";
-import type { Layer } from "@/types/layer";
-import type { Device } from "@/types/device";
-import type { Zone } from "@/types/zone";
-import { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH } from "@/constants/floorPlan";
 
-const zones: Zone[] = [];
-
-const DEFAULT_FLOOR_PLAN_HREF = "/floor-plan.jpg";
-
-const REPOSITION_STEP = 4;
-const REPOSITION_SHIFT_MULT = 5;
-
-export default function Home() {
+export default function HomePage() {
   const {
-    layers,
-    devices,
-    allDevicesFlat,
     floorPlans,
-    activeFloorPlanId,
-    setActiveFloorPlanId,
+    hydrated,
     addFloorPlan,
     renameFloorPlan,
     deleteFloorPlan,
-    activeLayerId,
-    setActiveLayerId,
-    hydrated,
-    layerById,
-    deviceById,
-    childrenOf,
-    connectedTo,
-    visibleDevices,
-    deviceCountByLayer,
-    stats,
-    addLayer,
-    updateLayer,
-    deleteLayer,
-    toggleLayerVisibility,
-    showAllLayers,
-    hideAllLayers,
-    addDevice,
-    updateDevice,
-    deleteDevice,
     exportJson,
     importJson,
-    floorPlanDataUrl,
-    uploadFloorPlanFromFile,
-    clearFloorPlan,
     cloudSyncEnabled,
   } = useAppState();
 
-  const activeFloorName = useMemo(
-    () =>
-      floorPlans.find((fp) => fp.id === activeFloorPlanId)?.name ?? "Floor",
-    [floorPlans, activeFloorPlanId]
-  );
-
-  const [search, setSearch] = useState("");
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
-  const [deviceFormId, setDeviceFormId] = useState<string | null>(null);
-  const [deviceFormMode, setDeviceFormMode] = useState<"create" | "edit">("create");
-  const [layerFormOpen, setLayerFormOpen] = useState(false);
-  const [layerFormLayer, setLayerFormLayer] = useState<Layer | null>(null);
-  const [repositionMode, setRepositionMode] = useState(false);
-
-  const filteredDevices = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return visibleDevices;
-    return visibleDevices.filter(
-      (d) =>
-        d.name.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q)
-    );
-  }, [visibleDevices, search]);
-
-  const handleDeviceClick = useCallback(
-    (device: Device) => {
-      const fp = floorPlans.find((f) => f.devices.some((d) => d.id === device.id));
-      if (fp && fp.id !== activeFloorPlanId) {
-        setActiveFloorPlanId(fp.id);
-      }
-      setDeviceFormId(null);
-      setRepositionMode(false);
-      setSelectedDeviceId(device.id);
-    },
-    [floorPlans, activeFloorPlanId, setActiveFloorPlanId]
-  );
-
-  const handleClosePanel = useCallback(() => {
-    setRepositionMode(false);
-    setSelectedDeviceId(null);
-  }, []);
-
-  const handleEnterRepositionMode = useCallback(() => {
-    setActiveLayerId(null);
-    setRepositionMode(true);
-  }, [setActiveLayerId]);
-
-  const handleExitRepositionMode = useCallback(() => {
-    setRepositionMode(false);
-  }, []);
-
-  useEffect(() => {
-    if (activeLayerId) setRepositionMode(false);
-  }, [activeLayerId]);
-
-  const handleSelectFloor = useCallback(
-    (id: string) => {
-      if (id === activeFloorPlanId) return;
-      setSelectedDeviceId(null);
-      setRepositionMode(false);
-      setDeviceFormId(null);
-      setActiveLayerId(null);
-      setActiveFloorPlanId(id);
-    },
-    [activeFloorPlanId, setActiveFloorPlanId, setActiveLayerId]
-  );
-
   const handleAddFloor = useCallback(() => {
-    setSelectedDeviceId(null);
-    setDeviceFormId(null);
-    setRepositionMode(false);
-    addFloorPlan();
+    return addFloorPlan();
   }, [addFloorPlan]);
-
-  const handleDeleteFloor = useCallback(
-    (id: string) => {
-      setSelectedDeviceId(null);
-      setDeviceFormId(null);
-      deleteFloorPlan(id);
-    },
-    [deleteFloorPlan]
-  );
-
-  useEffect(() => {
-    if (!repositionMode || !selectedDeviceId) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.tagName === "SELECT" ||
-          el.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setRepositionMode(false);
-        return;
-      }
-
-      if (
-        e.key !== "ArrowUp" &&
-        e.key !== "ArrowDown" &&
-        e.key !== "ArrowLeft" &&
-        e.key !== "ArrowRight"
-      ) {
-        return;
-      }
-
-      const device = devices.find((d) => d.id === selectedDeviceId);
-      if (!device || device.parentId) return;
-
-      e.preventDefault();
-      const step = e.shiftKey
-        ? REPOSITION_STEP * REPOSITION_SHIFT_MULT
-        : REPOSITION_STEP;
-      let dx = 0;
-      let dy = 0;
-      if (e.key === "ArrowLeft") dx = -step;
-      if (e.key === "ArrowRight") dx = step;
-      if (e.key === "ArrowUp") dy = -step;
-      if (e.key === "ArrowDown") dy = step;
-      const nx = Math.min(
-        FLOOR_PLAN_WIDTH,
-        Math.max(0, device.position.x + dx)
-      );
-      const ny = Math.min(
-        FLOOR_PLAN_HEIGHT,
-        Math.max(0, device.position.y + dy)
-      );
-      updateDevice(device.id, { position: { x: nx, y: ny } });
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [repositionMode, selectedDeviceId, devices, updateDevice]);
-
-  const handlePlaceAt = useCallback(
-    (position: { x: number; y: number }) => {
-      if (!activeLayerId) return;
-      setRepositionMode(false);
-      const layer = layerById(activeLayerId);
-      const id = addDevice({
-        name: layer?.kind === "server" ? "New rack" : "New device",
-        layerId: activeLayerId,
-        position,
-        status: "online",
-        description: "",
-        properties: [],
-        portSlots: [],
-      });
-      setSelectedDeviceId(null);
-      setDeviceFormMode("create");
-      setDeviceFormId(id);
-    },
-    [activeLayerId, addDevice, layerById]
-  );
-
-  const handleAddRackUnit = useCallback(
-    (parent: Device) => {
-      setRepositionMode(false);
-      const siblings = devices.filter((d) => d.parentId === parent.id);
-      const nextOrder =
-        siblings.length === 0
-          ? 1
-          : Math.max(...siblings.map((c) => c.rackOrder ?? 0), 0) + 1;
-      const id = addDevice({
-        name: "New unit",
-        layerId: parent.layerId,
-        parentId: parent.id,
-        position: { ...parent.position },
-        rackOrder: nextOrder,
-        status: "online",
-        description: "",
-        properties: [],
-        portSlots: [],
-      });
-      setSelectedDeviceId(null);
-      setDeviceFormMode("create");
-      setDeviceFormId(id);
-    },
-    [addDevice, devices]
-  );
-
-  const handleMoveRackUnit = useCallback(
-    (parentId: string, childId: string, direction: -1 | 1) => {
-      const siblings = childrenOf(parentId);
-      const idx = siblings.findIndex((c) => c.id === childId);
-      if (idx < 0) return;
-      const swapIdx = idx + direction;
-      if (swapIdx < 0 || swapIdx >= siblings.length) return;
-      const a = siblings[idx];
-      const b = siblings[swapIdx];
-      const ao = a.rackOrder ?? idx + 1;
-      const bo = b.rackOrder ?? swapIdx + 1;
-      updateDevice(a.id, { rackOrder: bo });
-      updateDevice(b.id, { rackOrder: ao });
-    },
-    [childrenOf, updateDevice]
-  );
-
-  const closeDeviceForm = useCallback(() => {
-    setDeviceFormId(null);
-  }, []);
-
-  const handleDeviceFormClose = useCallback(() => {
-    setRepositionMode(false);
-    if (deviceFormMode === "create" && deviceFormId) {
-      deleteDevice(deviceFormId);
-    }
-    closeDeviceForm();
-  }, [deviceFormMode, deviceFormId, deleteDevice, closeDeviceForm]);
-
-  const deviceFormDevice = deviceFormId ? deviceById(deviceFormId) : null;
-
-  const selectedDevice = selectedDeviceId
-    ? deviceById(selectedDeviceId) ?? null
-    : null;
-
-  const openLayerCreate = useCallback(() => {
-    setLayerFormLayer(null);
-    setLayerFormOpen(true);
-  }, []);
-
-  const openLayerEdit = useCallback(
-    (layerId: string) => {
-      const l = layerById(layerId);
-      if (l) {
-        setLayerFormLayer(l);
-        setLayerFormOpen(true);
-      }
-    },
-    [layerById]
-  );
-
-  const handleLayerSave = useCallback(
-    (data: Omit<Layer, "id">) => {
-      if (layerFormLayer) {
-        updateLayer(layerFormLayer.id, data);
-      } else {
-        const id = addLayer(data);
-        setActiveLayerId(id);
-      }
-      setLayerFormOpen(false);
-      setLayerFormLayer(null);
-    },
-    [layerFormLayer, updateLayer, addLayer, setActiveLayerId]
-  );
 
   if (!hydrated) {
     return (
       <div className="h-full flex items-center justify-center bg-bg-primary text-text-muted text-sm">
-        Loading map…
+        Loading…
       </div>
     );
   }
 
   return (
-    <div className="h-full flex">
-      <Sidebar
-        floorPlans={floorPlans}
-        activeFloorPlanId={activeFloorPlanId}
-        activeFloorName={activeFloorName}
-        onSelectFloor={handleSelectFloor}
-        onAddFloor={handleAddFloor}
-        onRenameFloor={renameFloorPlan}
-        onDeleteFloor={handleDeleteFloor}
-        search={search}
-        onSearchChange={setSearch}
-        layers={layers}
-        activeLayerId={activeLayerId}
-        onClearActiveLayer={() => setActiveLayerId(null)}
-        onActivateLayer={setActiveLayerId}
-        onToggleLayer={toggleLayerVisibility}
-        onShowAll={showAllLayers}
-        onHideAll={hideAllLayers}
-        onNewLayer={openLayerCreate}
-        onEditLayer={openLayerEdit}
-        onDeleteLayer={deleteLayer}
-        deviceCountByLayer={deviceCountByLayer}
-        stats={stats}
-        onExport={exportJson}
-        onImport={importJson}
-        cloudSyncEnabled={cloudSyncEnabled}
-        hasCustomFloorPlan={!!floorPlanDataUrl}
-        onFloorPlanUpload={uploadFloorPlanFromFile}
-        onFloorPlanReset={clearFloorPlan}
-      />
+    <div className="h-full overflow-y-auto bg-bg-primary">
+      <header className="border-b border-border bg-bg-secondary/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/20 shrink-0">
+              <MapPin className="w-5 h-5 text-accent-light" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-text-primary tracking-tight truncate">
+                Concourse
+              </h1>
+              <p className="text-xs text-text-muted">Network map</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/settings/device-types"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60 transition-colors"
+            >
+              <Palette className="w-4 h-4 text-accent-light" />
+              Device type colors
+            </Link>
+            <p className="text-[10px] text-text-muted hidden lg:block text-right max-w-xs">
+              Pick a floor plan to edit the map, layers, and devices for that floor only.
+            </p>
+          </div>
+        </div>
+      </header>
 
-      <main className="flex-1 ml-0 md:ml-80 h-full transition-all duration-300">
-        <MapCanvas
-          zones={zones}
-          devices={filteredDevices}
-          layers={layers}
-          selectedDeviceId={selectedDeviceId}
-          onDeviceClick={handleDeviceClick}
-          floorPlanImageHref={floorPlanDataUrl ?? DEFAULT_FLOOR_PLAN_HREF}
-          placeMode={!!activeLayerId}
-          onPlaceAt={handlePlaceAt}
-          repositionMode={repositionMode}
-          repositionDeviceName={
-            repositionMode && selectedDevice ? selectedDevice.name : null
-          }
-          onExitReposition={handleExitRepositionMode}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-16">
+        <FloorPlansHome
+          floorPlans={floorPlans}
+          onAddFloor={handleAddFloor}
+          onRenameFloor={renameFloorPlan}
+          onDeleteFloor={deleteFloorPlan}
         />
+
+        <div className="mt-12 pt-8 border-t border-border">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+            Project data
+          </h3>
+          <ExportImport onExport={exportJson} onImport={importJson} />
+          {cloudSyncEnabled && (
+            <p className="text-[10px] text-text-muted mt-3">
+              Cloud sync: map data is saved to Supabase (shared for all visitors).
+            </p>
+          )}
+        </div>
       </main>
-
-      <LayerForm
-        open={layerFormOpen}
-        mode={layerFormLayer ? "edit" : "create"}
-        initial={layerFormLayer}
-        onSave={handleLayerSave}
-        onDelete={
-          layerFormLayer
-            ? () => {
-                deleteLayer(layerFormLayer.id);
-                setLayerFormOpen(false);
-                setLayerFormLayer(null);
-              }
-            : undefined
-        }
-        onClose={() => {
-          setLayerFormOpen(false);
-          setLayerFormLayer(null);
-        }}
-      />
-
-      {deviceFormDevice && (
-        <DeviceForm
-          open={!!deviceFormId}
-          device={deviceFormDevice}
-          mode={deviceFormMode}
-          allDevices={allDevicesFlat}
-          excludeDeviceId={deviceFormDevice.id}
-          onSave={(patch) => {
-            updateDevice(deviceFormDevice.id, patch);
-            setDeviceFormId(null);
-            setSelectedDeviceId(deviceFormDevice.id);
-          }}
-          onDelete={() => {
-            deleteDevice(deviceFormDevice.id);
-            setDeviceFormId(null);
-            setSelectedDeviceId(null);
-          }}
-          onClose={handleDeviceFormClose}
-        />
-      )}
-
-      {selectedDevice && !deviceFormId && (() => {
-        const selLayer = layerById(selectedDevice.layerId);
-        const isServerRackRoot = selLayer?.kind === "server" && !selectedDevice.parentId;
-        const parentDevice = selectedDevice.parentId
-          ? deviceById(selectedDevice.parentId)
-          : null;
-        return (
-          <DeviceDetailPanel
-            device={selectedDevice}
-            layerName={selLayer?.name ?? "Unknown layer"}
-            layerKind={selLayer?.kind ?? "standard"}
-            rackColor={selLayer?.color ?? "#64748b"}
-            children={childrenOf(selectedDevice.id)}
-            connectedDevices={connectedTo(selectedDevice.id)}
-            getDeviceById={deviceById}
-            onClose={handleClosePanel}
-            onBackToParent={
-              parentDevice ? () => setSelectedDeviceId(parentDevice.id) : undefined
-            }
-            parentDeviceName={parentDevice?.name}
-            onSelectDevice={handleDeviceClick}
-            onEdit={() => {
-              setRepositionMode(false);
-              setDeviceFormMode("edit");
-              setDeviceFormId(selectedDevice.id);
-              setSelectedDeviceId(null);
-            }}
-            canRepositionOnMap={!selectedDevice.parentId}
-            repositionMode={repositionMode}
-            onEnterRepositionMode={handleEnterRepositionMode}
-            onExitRepositionMode={handleExitRepositionMode}
-            onDelete={() => {
-              deleteDevice(selectedDevice.id);
-              setSelectedDeviceId(null);
-            }}
-            onAddRackUnit={
-              isServerRackRoot ? () => handleAddRackUnit(selectedDevice) : undefined
-            }
-            onMoveRackUnit={
-              isServerRackRoot
-                ? (childId, direction) =>
-                    handleMoveRackUnit(selectedDevice.id, childId, direction)
-                : undefined
-            }
-          />
-        );
-      })()}
     </div>
   );
 }

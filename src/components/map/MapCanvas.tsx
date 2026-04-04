@@ -8,6 +8,7 @@ import { Crosshair } from "lucide-react";
 import type { Zone } from "@/types/zone";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
+import type { DeviceTypeId } from "@/constants/deviceTypes";
 
 interface MapCanvasProps {
   zones: Zone[];
@@ -23,6 +24,7 @@ interface MapCanvasProps {
   repositionMode?: boolean;
   repositionDeviceName?: string | null;
   onExitReposition?: () => void;
+  resolveDeviceTypeColor: (typeId: DeviceTypeId) => string;
 }
 
 export function MapCanvas({
@@ -37,6 +39,7 @@ export function MapCanvas({
   repositionMode,
   repositionDeviceName,
   onExitReposition,
+  resolveDeviceTypeColor,
 }: MapCanvasProps) {
   const { transform, handlers, zoomIn, zoomOut, resetView } = useMapTransform();
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
@@ -100,6 +103,7 @@ export function MapCanvas({
               selectedDeviceId={selectedDeviceId}
               onDeviceClick={onDeviceClick}
               floorPlanImageHref={floorPlanImageHref}
+              resolveDeviceTypeColor={resolveDeviceTypeColor}
               devMode={devMode}
               placeMode={placeMode && !devMode}
               onSvgClick={handleSvgClick}

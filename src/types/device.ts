@@ -1,3 +1,5 @@
+import type { DeviceTypeId } from "@/constants/deviceTypes";
+
 export type DeviceStatus = "online" | "offline" | "maintenance";
 
 export interface DeviceProperty {
@@ -19,6 +21,8 @@ export interface Device {
   id: string;
   name: string;
   layerId: string;
+  /** Map marker fill color family; layer color draws as an outer ring. */
+  deviceTypeId: DeviceTypeId;
   position: { x: number; y: number };
   parentId?: string;
   /** Vertical order inside a server rack (lower = top of stack). */

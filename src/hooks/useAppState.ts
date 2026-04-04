@@ -4,6 +4,10 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Layer } from "@/types/layer";
 import type { Device } from "@/types/device";
 import type { FloorPlanDocument } from "@/types/floorPlan";
+import {
+  DEFAULT_DEVICE_TYPE_COLORS,
+  type DeviceTypeId,
+} from "@/constants/deviceTypes";
 import { normalizeFloorPlanImage } from "@/lib/floorPlanImage";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -46,6 +50,9 @@ function newId(prefix: string): string {
 export function useAppState() {
   const [floorPlans, setFloorPlans] = useState<FloorPlanDocument[]>([]);
   const [activeFloorPlanId, setActiveFloorPlanId] = useState<string | null>(null);
+  const [deviceTypeColorOverrides, setDeviceTypeColorOverrides] = useState<
+    Record<string, string>
+  >({});
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,6 +94,7 @@ export function useAppState() {
       if (cancelled) return;
       setFloorPlans(initial.floorPlans);
       setActiveFloorPlanId(initial.activeFloorPlanId);
+      setDeviceTypeColorOverrides(initial.deviceTypeColorOverrides ?? {});
       setHydrated(true);
     })();
 
@@ -107,8 +115,12 @@ export function useAppState() {
 
   useEffect(() => {
     if (!hydrated) return;
-    saveToStorage({ floorPlans, activeFloorPlanId });
-  }, [floorPlans, activeFloorPlanId, hydrated]);
+    saveToStorage({
+      floorPlans,
+      activeFloorPlanId,
+      deviceTypeColorOverrides,
+    });
+  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated]);
 
   useEffect(() => {
     if (!hydrated || !cloudSyncEnabled) return;
@@ -119,13 +131,41 @@ export function useAppState() {
       void saveMapStateToSupabase({
         floorPlans,
         activeFloorPlanId,
+        deviceTypeColorOverrides,
       });
     }, SUPABASE_SAVE_DEBOUNCE_MS);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [floorPlans, activeFloorPlanId, hydrated, cloudSyncEnabled]);
+  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated, cloudSyncEnabled]);
+
+  const resolveDeviceTypeColor = useCallback(
+    (typeId: DeviceTypeId) =>
+      deviceTypeColorOverrides[typeId] ??
+      DEFAULT_DEVICE_TYPE_COLORS[typeId] ??
+      DEFAULT_DEVICE_TYPE_COLORS.other,
+    [deviceTypeColorOverrides]
+  );
+
+  const setDeviceTypeColorOverride = useCallback(
+    (typeId: DeviceTypeId, hex: string | null) => {
+      setDeviceTypeColorOverrides((prev) => {
+        const next = { ...prev };
+        if (hex == null || hex === DEFAULT_DEVICE_TYPE_COLORS[typeId]) {
+          delete next[typeId];
+        } else {
+          next[typeId] = hex;
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const resetDeviceTypeColorOverrides = useCallback(() => {
+    setDeviceTypeColorOverrides({});
+  }, []);
 
   const layerById = useCallback(
     (id: string) => layers.find((x) => x.id === id),
@@ -300,6 +340,7 @@ export function useAppState() {
     const data: PersistedMapState = {
       floorPlans,
       activeFloorPlanId,
+      deviceTypeColorOverrides,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
@@ -310,7 +351,7 @@ export function useAppState() {
     a.download = `concourse-map-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [floorPlans, activeFloorPlanId]);
+  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides]);
 
   const importJson = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
@@ -325,6 +366,7 @@ export function useAppState() {
           }
           setFloorPlans(state.floorPlans);
           setActiveFloorPlanId(state.activeFloorPlanId);
+          setDeviceTypeColorOverrides(state.deviceTypeColorOverrides ?? {});
           setActiveLayerId(null);
           resolve();
         } catch (e) {
@@ -340,6 +382,7 @@ export function useAppState() {
     const empty = emptyPersistedMapState();
     setFloorPlans(empty.floorPlans);
     setActiveFloorPlanId(empty.activeFloorPlanId);
+    setDeviceTypeColorOverrides(empty.deviceTypeColorOverrides);
     setActiveLayerId(null);
   }, []);
 
@@ -369,6 +412,7 @@ export function useAppState() {
     ]);
     setActiveFloorPlanId(id);
     setActiveLayerId(null);
+    return id;
   }, []);
 
   const renameFloorPlan = useCallback((id: string, name: string) => {
@@ -422,5 +466,9 @@ export function useAppState() {
     exportJson,
     importJson,
     resetAll,
+    deviceTypeColorOverrides,
+    resolveDeviceTypeColor,
+    setDeviceTypeColorOverride,
+    resetDeviceTypeColorOverrides,
   };
 }

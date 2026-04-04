@@ -3,6 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { X, Trash2, Plus, Minus } from "lucide-react";
 import type { Device, DeviceProperty, DeviceStatus, PortSlot } from "@/types/device";
+import {
+  DEVICE_TYPE_IDS,
+  DEVICE_TYPE_LABELS,
+  type DeviceTypeId,
+} from "@/constants/deviceTypes";
 
 interface DeviceFormProps {
   open: boolean;
@@ -57,6 +62,7 @@ export function DeviceForm({
   const [portSlots, setPortSlots] = useState<PortSlot[]>([]);
   /** String so users can type multi-digit counts before blur. */
   const [portCountDraft, setPortCountDraft] = useState("0");
+  const [deviceTypeId, setDeviceTypeId] = useState<DeviceTypeId>("other");
 
   const connectionOptions = useMemo(
     () =>
@@ -79,6 +85,7 @@ export function DeviceForm({
       Array.isArray(slots) && slots.length > 0 ? slots.map((s) => ({ ...s })) : [];
     setPortSlots(list);
     setPortCountDraft(String(list.length));
+    setDeviceTypeId(device.deviceTypeId ?? "other");
   }, [open, device]);
 
   if (!open || !device) return null;
@@ -94,6 +101,7 @@ export function DeviceForm({
       name: trimmed,
       description: description.trim(),
       status,
+      deviceTypeId,
       properties: cleanedProps,
       portSlots: cleanPortSlots(portSlots),
     });
@@ -191,6 +199,24 @@ export function DeviceForm({
               <option value="online">Online</option>
               <option value="offline">Offline</option>
               <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">Device type</label>
+            <p className="text-[10px] text-text-muted mb-1.5">
+              Fill color on the map. Layer color still shows as the outer ring.
+            </p>
+            <select
+              value={deviceTypeId}
+              onChange={(e) => setDeviceTypeId(e.target.value as DeviceTypeId)}
+              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              {DEVICE_TYPE_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {DEVICE_TYPE_LABELS[id]}
+                </option>
+              ))}
             </select>
           </div>
 
