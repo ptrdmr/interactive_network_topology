@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import type { Layer } from "@/types/layer";
 import type { Device } from "@/types/device";
 import type { FloorPlanDocument } from "@/types/floorPlan";
@@ -47,7 +56,7 @@ function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function useAppState() {
+function useAppStateImpl() {
   const [floorPlans, setFloorPlans] = useState<FloorPlanDocument[]>([]);
   const [activeFloorPlanId, setActiveFloorPlanId] = useState<string | null>(null);
   const [deviceTypeColorOverrides, setDeviceTypeColorOverrides] = useState<
@@ -471,4 +480,24 @@ export function useAppState() {
     setDeviceTypeColorOverride,
     resetDeviceTypeColorOverrides,
   };
+}
+
+const AppStateContext = createContext<ReturnType<typeof useAppStateImpl> | null>(
+  null
+);
+
+/** Mount once in the root layout so map, home, and settings share one store (avoids losing data on client navigation). */
+export function AppStateProvider({ children }: { children: ReactNode }) {
+  const value = useAppStateImpl();
+  return (
+    <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+  );
+}
+
+export function useAppState() {
+  const ctx = useContext(AppStateContext);
+  if (!ctx) {
+    throw new Error("useAppState must be used within AppStateProvider");
+  }
+  return ctx;
 }
