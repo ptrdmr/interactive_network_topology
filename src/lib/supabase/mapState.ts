@@ -1,5 +1,5 @@
 import type { Layer } from "@/types/layer";
-import type { Device } from "@/types/device";
+import type { Device, PortSlot } from "@/types/device";
 import { getSupabaseBrowserClient } from "./client";
 
 export interface PersistedMapState {
@@ -19,13 +19,34 @@ function normalizeLayer(raw: Layer): Layer {
   };
 }
 
+function normalizePortSlot(raw: unknown): PortSlot {
+  if (!raw || typeof raw !== "object") return {};
+  const o = raw as Record<string, unknown>;
+  const slot: PortSlot = {};
+  if (typeof o.label === "string") slot.label = o.label;
+  if (typeof o.notes === "string") slot.notes = o.notes;
+  if (typeof o.connectedDeviceId === "string") slot.connectedDeviceId = o.connectedDeviceId;
+  if (typeof o.remotePort === "string") slot.remotePort = o.remotePort;
+  return slot;
+}
+
+function normalizeDevice(raw: Device): Device {
+  const portSlots = Array.isArray((raw as { portSlots?: unknown }).portSlots)
+    ? (raw as { portSlots: unknown[] }).portSlots.map(normalizePortSlot)
+    : [];
+  return {
+    ...raw,
+    portSlots,
+  };
+}
+
 export function parsePersistedMapState(raw: unknown): PersistedMapState | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   if (!Array.isArray(o.layers) || !Array.isArray(o.devices)) return null;
   return {
     layers: (o.layers as Layer[]).map((l) => normalizeLayer(l)),
-    devices: o.devices as Device[],
+    devices: (o.devices as Device[]).map(normalizeDevice),
     floorPlanDataUrl:
       typeof o.floorPlanDataUrl === "string" ? o.floorPlanDataUrl : null,
   };

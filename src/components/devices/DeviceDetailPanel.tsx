@@ -1,6 +1,17 @@
 "use client";
 
-import { X, Server, ChevronRight, Circle, ArrowUpRight, Pencil, Trash2, Move } from "lucide-react";
+import {
+  X,
+  Server,
+  ChevronRight,
+  ChevronLeft,
+  Circle,
+  ArrowUpRight,
+  Pencil,
+  Trash2,
+  Move,
+  Network,
+} from "lucide-react";
 import type { Device } from "@/types/device";
 import type { LayerKind } from "@/types/layer";
 import { Badge } from "@/components/ui/Badge";
@@ -13,7 +24,12 @@ interface DeviceDetailPanelProps {
   rackColor: string;
   children: Device[];
   connectedDevices: Device[];
+  /** Resolve port link targets by id (for names and navigation). */
+  getDeviceById: (id: string) => Device | undefined;
   onClose: () => void;
+  /** Rack units: return to the enclosure (parent) view */
+  onBackToParent?: () => void;
+  parentDeviceName?: string;
   onSelectDevice: (device: Device) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -63,7 +79,10 @@ export function DeviceDetailPanel({
   rackColor,
   children,
   connectedDevices,
+  getDeviceById,
   onClose,
+  onBackToParent,
+  parentDeviceName,
   onSelectDevice,
   onEdit,
   onDelete,
@@ -83,7 +102,18 @@ export function DeviceDetailPanel({
   return (
     <div className="fixed top-0 right-0 h-full w-96 z-50 bg-bg-secondary border-l border-border shadow-2xl flex flex-col animate-slide-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border gap-2">
+      <div className="flex flex-col gap-2 px-5 py-4 border-b border-border">
+        {onBackToParent && (
+          <button
+            type="button"
+            onClick={onBackToParent}
+            className="self-start flex items-center gap-1.5 rounded-lg px-2 py-1.5 -ml-2 text-xs font-medium text-accent-light hover:bg-bg-hover transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 shrink-0" />
+            Back to {parentDeviceName ?? "rack"}
+          </button>
+        )}
+        <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-bold text-text-primary truncate">{device.name}</h2>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -119,6 +149,7 @@ export function DeviceDetailPanel({
           >
             <X className="w-5 h-5 text-text-muted" />
           </button>
+        </div>
         </div>
       </div>
 
@@ -168,6 +199,75 @@ export function DeviceDetailPanel({
                   <span className="text-xs text-text-primary font-mono text-right break-all">{prop.value}</span>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {device.portSlots && device.portSlots.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
+              <Network className="w-3.5 h-3.5" /> Ports ({device.portSlots.length})
+            </h3>
+            <div className="space-y-2">
+              {device.portSlots.map((slot, i) => {
+                const target = slot.connectedDeviceId
+                  ? getDeviceById(slot.connectedDeviceId)
+                  : undefined;
+                const hasBody =
+                  !!(slot.label?.trim() ||
+                    slot.notes?.trim() ||
+                    slot.connectedDeviceId?.trim() ||
+                    slot.remotePort?.trim());
+                if (!hasBody) {
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-border/50 bg-bg-card/60 px-3 py-2 text-xs text-text-muted"
+                    >
+                      Port {i + 1} — <span className="italic">empty</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-border/50 bg-bg-card/90 px-3 py-2 space-y-1"
+                  >
+                    <p className="text-xs font-medium text-text-primary">
+                      Port {i + 1}
+                      {slot.label?.trim() ? (
+                        <span className="text-text-muted font-mono font-normal"> · {slot.label.trim()}</span>
+                      ) : null}
+                    </p>
+                    {slot.notes?.trim() && (
+                      <p className="text-[11px] text-text-secondary leading-snug">{slot.notes.trim()}</p>
+                    )}
+                    {(slot.connectedDeviceId || slot.remotePort?.trim()) && (
+                      <p className="text-[11px] text-text-muted flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                        {slot.connectedDeviceId ? (
+                          target ? (
+                            <button
+                              type="button"
+                              onClick={() => onSelectDevice(target)}
+                              className="text-accent-light hover:underline text-left"
+                            >
+                              → {target.name}
+                            </button>
+                          ) : (
+                            <span>→ Unknown device ({slot.connectedDeviceId})</span>
+                          )
+                        ) : null}
+                        {slot.connectedDeviceId && slot.remotePort?.trim() ? (
+                          <span className="text-text-muted">·</span>
+                        ) : null}
+                        {slot.remotePort?.trim() ? (
+                          <span className="text-text-secondary">{slot.remotePort.trim()}</span>
+                        ) : null}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

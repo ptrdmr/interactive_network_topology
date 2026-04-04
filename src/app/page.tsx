@@ -162,6 +162,7 @@ export default function Home() {
         status: "online",
         description: "",
         properties: [],
+        portSlots: [],
       });
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
@@ -187,6 +188,7 @@ export default function Home() {
         status: "online",
         description: "",
         properties: [],
+        portSlots: [],
       });
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
@@ -334,6 +336,8 @@ export default function Home() {
           open={!!deviceFormId}
           device={deviceFormDevice}
           mode={deviceFormMode}
+          allDevices={devices}
+          excludeDeviceId={deviceFormDevice.id}
           onSave={(patch) => {
             updateDevice(deviceFormDevice.id, patch);
             setDeviceFormId(null);
@@ -351,6 +355,9 @@ export default function Home() {
       {selectedDevice && !deviceFormId && (() => {
         const selLayer = layerById(selectedDevice.layerId);
         const isServerRackRoot = selLayer?.kind === "server" && !selectedDevice.parentId;
+        const parentDevice = selectedDevice.parentId
+          ? deviceById(selectedDevice.parentId)
+          : null;
         return (
           <DeviceDetailPanel
             device={selectedDevice}
@@ -359,7 +366,12 @@ export default function Home() {
             rackColor={selLayer?.color ?? "#64748b"}
             children={childrenOf(selectedDevice.id)}
             connectedDevices={connectedTo(selectedDevice.id)}
+            getDeviceById={deviceById}
             onClose={handleClosePanel}
+            onBackToParent={
+              parentDevice ? () => setSelectedDeviceId(parentDevice.id) : undefined
+            }
+            parentDeviceName={parentDevice?.name}
             onSelectDevice={handleDeviceClick}
             onEdit={() => {
               setRepositionMode(false);
