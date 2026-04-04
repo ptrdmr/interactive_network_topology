@@ -1,15 +1,31 @@
 import type { Layer } from "@/types/layer";
 import type { Device, PortSlot } from "@/types/device";
+import type { FloorPlanDocument } from "@/types/floorPlan";
 import { getSupabaseBrowserClient } from "./client";
 
 export interface PersistedMapState {
-  layers: Layer[];
-  devices: Device[];
-  floorPlanDataUrl?: string | null;
+  floorPlans: FloorPlanDocument[];
+  activeFloorPlanId: string | null;
+}
+
+function newFloorPlanId(): string {
+  return `floor-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function emptyPersistedMapState(): PersistedMapState {
-  return { layers: [], devices: [], floorPlanDataUrl: null };
+  const id = newFloorPlanId();
+  return {
+    floorPlans: [
+      {
+        id,
+        name: "Main floor",
+        floorPlanDataUrl: null,
+        layers: [],
+        devices: [],
+      },
+    ],
+    activeFloorPlanId: id,
+  };
 }
 
 function normalizeLayer(raw: Layer): Layer {
@@ -40,16 +56,91 @@ function normalizeDevice(raw: Device): Device {
   };
 }
 
+function normalizeFloorPlanDocument(raw: unknown): FloorPlanDocument | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.id !== "string" || typeof o.name !== "string") return null;
+  const layers = Array.isArray(o.layers)
+    ? (o.layers as Layer[]).map((l) => normalizeLayer(l))
+    : [];
+  const devices = Array.isArray(o.devices)
+    ? (o.devices as Device[]).map((d) => normalizeDevice(d))
+    : [];
+  return {
+    id: o.id,
+    name: o.name,
+    floorPlanDataUrl:
+      typeof o.floorPlanDataUrl === "string" ? o.floorPlanDataUrl : null,
+    layers,
+    devices,
+  };
+}
+
+/** Legacy v1 shape: flat layers, devices, optional floorPlanDataUrl (no real floorPlans). */
+function isLegacyV1Shape(o: Record<string, unknown>): boolean {
+  return (
+    Array.isArray(o.layers) &&
+    Array.isArray(o.devices) &&
+    (!Array.isArray(o.floorPlans) || o.floorPlans.length === 0)
+  );
+}
+
+function migrateLegacyV1(o: Record<string, unknown>): PersistedMapState {
+  const id = newFloorPlanId();
+  return {
+    floorPlans: [
+      {
+        id,
+        name: "Main floor",
+        floorPlanDataUrl:
+          typeof o.floorPlanDataUrl === "string" ? o.floorPlanDataUrl : null,
+        layers: (o.layers as Layer[]).map((l) => normalizeLayer(l)),
+        devices: (o.devices as Device[]).map((d) => normalizeDevice(d)),
+      },
+    ],
+    activeFloorPlanId: id,
+  };
+}
+
+function ensureAtLeastOneFloor(state: PersistedMapState): PersistedMapState {
+  if (state.floorPlans.length > 0) return state;
+  const id = newFloorPlanId();
+  return {
+    floorPlans: [
+      {
+        id,
+        name: "Main floor",
+        floorPlanDataUrl: null,
+        layers: [],
+        devices: [],
+      },
+    ],
+    activeFloorPlanId: id,
+  };
+}
+
 export function parsePersistedMapState(raw: unknown): PersistedMapState | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
-  if (!Array.isArray(o.layers) || !Array.isArray(o.devices)) return null;
-  return {
-    layers: (o.layers as Layer[]).map((l) => normalizeLayer(l)),
-    devices: (o.devices as Device[]).map(normalizeDevice),
-    floorPlanDataUrl:
-      typeof o.floorPlanDataUrl === "string" ? o.floorPlanDataUrl : null,
-  };
+
+  if (isLegacyV1Shape(o)) {
+    return ensureAtLeastOneFloor(migrateLegacyV1(o));
+  }
+
+  if (Array.isArray(o.floorPlans) && o.floorPlans.length > 0) {
+    const floorPlans = o.floorPlans
+      .map(normalizeFloorPlanDocument)
+      .filter((fp): fp is FloorPlanDocument => fp != null);
+    if (floorPlans.length === 0) return null;
+    let activeFloorPlanId: string | null =
+      typeof o.activeFloorPlanId === "string" ? o.activeFloorPlanId : null;
+    if (!activeFloorPlanId || !floorPlans.some((fp) => fp.id === activeFloorPlanId)) {
+      activeFloorPlanId = floorPlans[0].id;
+    }
+    return ensureAtLeastOneFloor({ floorPlans, activeFloorPlanId });
+  }
+
+  return null;
 }
 
 const ROW_ID = "default";
@@ -81,9 +172,8 @@ export async function saveMapStateToSupabase(
   const payload = {
     id: ROW_ID,
     data: {
-      layers: state.layers,
-      devices: state.devices,
-      floorPlanDataUrl: state.floorPlanDataUrl ?? null,
+      floorPlans: state.floorPlans,
+      activeFloorPlanId: state.activeFloorPlanId,
     },
     updated_at: new Date().toISOString(),
   };

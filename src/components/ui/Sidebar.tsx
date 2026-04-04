@@ -6,9 +6,18 @@ import { SearchBar } from "./SearchBar";
 import { LayerPanel } from "@/components/layers/LayerPanel";
 import { ExportImport } from "./ExportImport";
 import { FloorPlanUpload } from "./FloorPlanUpload";
+import { FloorPlanPicker } from "./FloorPlanPicker";
 import type { Layer } from "@/types/layer";
+import type { FloorPlanDocument } from "@/types/floorPlan";
 
 interface SidebarProps {
+  floorPlans: FloorPlanDocument[];
+  activeFloorPlanId: string | null;
+  activeFloorName: string;
+  onSelectFloor: (id: string) => void;
+  onAddFloor: () => void;
+  onRenameFloor: (id: string, name: string) => void;
+  onDeleteFloor: (id: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
   layers: Layer[];
@@ -32,6 +41,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({
+  floorPlans,
+  activeFloorPlanId,
+  activeFloorName,
+  onSelectFloor,
+  onAddFloor,
+  onRenameFloor,
+  onDeleteFloor,
   search,
   onSearchChange,
   layers,
@@ -100,6 +116,15 @@ export function Sidebar({
         {/* Content — hidden when collapsed on desktop */}
         {!collapsed && (
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 flex flex-col min-h-0">
+            <FloorPlanPicker
+              floorPlans={floorPlans}
+              activeFloorPlanId={activeFloorPlanId}
+              onSelectFloor={onSelectFloor}
+              onAddFloor={onAddFloor}
+              onRenameFloor={onRenameFloor}
+              onDeleteFloor={onDeleteFloor}
+            />
+
             {/* Search */}
             <SearchBar value={search} onChange={onSearchChange} />
 
@@ -155,6 +180,7 @@ export function Sidebar({
             <div className="flex-1 min-h-4" />
 
             <FloorPlanUpload
+              floorName={activeFloorName}
               hasCustomFloorPlan={hasCustomFloorPlan}
               onUpload={onFloorPlanUpload}
               onReset={onFloorPlanReset}

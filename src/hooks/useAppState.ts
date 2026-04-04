@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Layer } from "@/types/layer";
 import type { Device } from "@/types/device";
+import type { FloorPlanDocument } from "@/types/floorPlan";
 import { normalizeFloorPlanImage } from "@/lib/floorPlanImage";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -30,16 +31,9 @@ function loadFromStorage(): PersistedMapState {
   }
 }
 
-function saveToStorage(
-  layers: Layer[],
-  devices: Device[],
-  floorPlanDataUrl: string | null
-) {
+function saveToStorage(state: PersistedMapState) {
   try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ layers, devices, floorPlanDataUrl })
-    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // ignore quota / private mode
   }
@@ -50,14 +44,30 @@ function newId(prefix: string): string {
 }
 
 export function useAppState() {
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [floorPlanDataUrl, setFloorPlanDataUrl] = useState<string | null>(null);
+  const [floorPlans, setFloorPlans] = useState<FloorPlanDocument[]>([]);
+  const [activeFloorPlanId, setActiveFloorPlanId] = useState<string | null>(null);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cloudSyncEnabled = isSupabaseConfigured();
+
+  const activeFloor = useMemo(() => {
+    if (floorPlans.length === 0) return null;
+    const found = activeFloorPlanId
+      ? floorPlans.find((fp) => fp.id === activeFloorPlanId)
+      : undefined;
+    return found ?? floorPlans[0];
+  }, [floorPlans, activeFloorPlanId]);
+
+  const layers = activeFloor?.layers ?? [];
+  const devices = activeFloor?.devices ?? [];
+  const floorPlanDataUrl = activeFloor?.floorPlanDataUrl ?? null;
+
+  const allDevicesFlat = useMemo(
+    () => floorPlans.flatMap((fp) => fp.devices),
+    [floorPlans]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -70,18 +80,13 @@ export function useAppState() {
         const remote = await fetchMapStateFromSupabase();
         if (!cancelled && remote) {
           initial = remote;
-          saveToStorage(
-            remote.layers,
-            remote.devices,
-            remote.floorPlanDataUrl ?? null
-          );
+          saveToStorage(initial);
         }
       }
 
       if (cancelled) return;
-      setLayers(initial.layers);
-      setDevices(initial.devices);
-      setFloorPlanDataUrl(initial.floorPlanDataUrl ?? null);
+      setFloorPlans(initial.floorPlans);
+      setActiveFloorPlanId(initial.activeFloorPlanId);
       setHydrated(true);
     })();
 
@@ -91,9 +96,19 @@ export function useAppState() {
   }, [cloudSyncEnabled]);
 
   useEffect(() => {
+    if (
+      activeFloorPlanId &&
+      !floorPlans.some((fp) => fp.id === activeFloorPlanId)
+    ) {
+      setActiveFloorPlanId(floorPlans[0]?.id ?? null);
+      setActiveLayerId(null);
+    }
+  }, [floorPlans, activeFloorPlanId]);
+
+  useEffect(() => {
     if (!hydrated) return;
-    saveToStorage(layers, devices, floorPlanDataUrl);
-  }, [layers, devices, floorPlanDataUrl, hydrated]);
+    saveToStorage({ floorPlans, activeFloorPlanId });
+  }, [floorPlans, activeFloorPlanId, hydrated]);
 
   useEffect(() => {
     if (!hydrated || !cloudSyncEnabled) return;
@@ -102,16 +117,15 @@ export function useAppState() {
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
       void saveMapStateToSupabase({
-        layers,
-        devices,
-        floorPlanDataUrl: floorPlanDataUrl ?? null,
+        floorPlans,
+        activeFloorPlanId,
       });
     }, SUPABASE_SAVE_DEBOUNCE_MS);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [layers, devices, floorPlanDataUrl, hydrated, cloudSyncEnabled]);
+  }, [floorPlans, activeFloorPlanId, hydrated, cloudSyncEnabled]);
 
   const layerById = useCallback(
     (id: string) => layers.find((x) => x.id === id),
@@ -119,8 +133,8 @@ export function useAppState() {
   );
 
   const deviceById = useCallback(
-    (id: string) => devices.find((x) => x.id === id),
-    [devices]
+    (id: string) => allDevicesFlat.find((x) => x.id === id),
+    [allDevicesFlat]
   );
 
   const childrenOf = useCallback(
@@ -174,64 +188,118 @@ export function useAppState() {
     };
   }, [devices]);
 
-  const addLayer = useCallback((layer: Omit<Layer, "id">) => {
-    const id = newId("layer");
-    setLayers((prev) => [...prev, { ...layer, id }]);
-    return id;
-  }, []);
+  const patchActiveFloor = useCallback(
+    (
+      updater: (fp: FloorPlanDocument) => FloorPlanDocument
+    ) => {
+      const id = activeFloor?.id;
+      if (!id) return;
+      setFloorPlans((prev) =>
+        prev.map((fp) => (fp.id === id ? updater(fp) : fp))
+      );
+    },
+    [activeFloor?.id]
+  );
 
-  const updateLayer = useCallback((id: string, patch: Partial<Layer>) => {
-    setLayers((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...patch } : l))
-    );
-  }, []);
+  const addLayer = useCallback(
+    (layer: Omit<Layer, "id">) => {
+      const layerId = newId("layer");
+      patchActiveFloor((fp) => ({
+        ...fp,
+        layers: [...fp.layers, { ...layer, id: layerId }],
+      }));
+      return layerId;
+    },
+    [patchActiveFloor]
+  );
 
-  const deleteLayer = useCallback((id: string) => {
-    setLayers((prev) => prev.filter((l) => l.id !== id));
-    setDevices((prev) => prev.filter((d) => d.layerId !== id));
-    setActiveLayerId((cur) => (cur === id ? null : cur));
-  }, []);
+  const updateLayer = useCallback(
+    (id: string, patch: Partial<Layer>) => {
+      patchActiveFloor((fp) => ({
+        ...fp,
+        layers: fp.layers.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+      }));
+    },
+    [patchActiveFloor]
+  );
 
-  const toggleLayerVisibility = useCallback((id: string) => {
-    setLayers((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))
-    );
-  }, []);
+  const deleteLayer = useCallback(
+    (id: string) => {
+      patchActiveFloor((fp) => ({
+        ...fp,
+        layers: fp.layers.filter((l) => l.id !== id),
+        devices: fp.devices.filter((d) => d.layerId !== id),
+      }));
+      setActiveLayerId((cur) => (cur === id ? null : cur));
+    },
+    [patchActiveFloor]
+  );
+
+  const toggleLayerVisibility = useCallback(
+    (id: string) => {
+      patchActiveFloor((fp) => ({
+        ...fp,
+        layers: fp.layers.map((l) =>
+          l.id === id ? { ...l, visible: !l.visible } : l
+        ),
+      }));
+    },
+    [patchActiveFloor]
+  );
 
   const showAllLayers = useCallback(() => {
-    setLayers((prev) => prev.map((l) => ({ ...l, visible: true })));
-  }, []);
+    patchActiveFloor((fp) => ({
+      ...fp,
+      layers: fp.layers.map((l) => ({ ...l, visible: true })),
+    }));
+  }, [patchActiveFloor]);
 
   const hideAllLayers = useCallback(() => {
-    setLayers((prev) => prev.map((l) => ({ ...l, visible: false })));
-  }, []);
+    patchActiveFloor((fp) => ({
+      ...fp,
+      layers: fp.layers.map((l) => ({ ...l, visible: false })),
+    }));
+  }, [patchActiveFloor]);
 
   const addDevice = useCallback(
     (device: Omit<Device, "id">) => {
-      const id = newId("device");
-      setDevices((prev) => [...prev, { ...device, id }]);
-      return id;
+      const devId = newId("device");
+      patchActiveFloor((fp) => ({
+        ...fp,
+        devices: [...fp.devices, { ...device, id: devId }],
+      }));
+      return devId;
     },
-    []
+    [patchActiveFloor]
   );
 
   const updateDevice = useCallback((id: string, patch: Partial<Device>) => {
-    setDevices((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...patch } : d))
+    setFloorPlans((prev) =>
+      prev.map((fp) => {
+        if (!fp.devices.some((d) => d.id === id)) return fp;
+        return {
+          ...fp,
+          devices: fp.devices.map((d) =>
+            d.id === id ? { ...d, ...patch } : d
+          ),
+        };
+      })
     );
   }, []);
 
   const deleteDevice = useCallback((id: string) => {
-    setDevices((prev) =>
-      prev.filter((d) => d.id !== id && d.parentId !== id)
+    setFloorPlans((prev) =>
+      prev.map((fp) => ({
+        ...fp,
+        devices: fp.devices.filter((d) => d.id !== id && d.parentId !== id),
+      }))
     );
   }, []);
 
   const exportJson = useCallback(() => {
     const data: PersistedMapState = {
-      layers,
-      devices,
-      floorPlanDataUrl: floorPlanDataUrl ?? null,
+      floorPlans,
+      activeFloorPlanId,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
@@ -242,7 +310,7 @@ export function useAppState() {
     a.download = `concourse-map-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [layers, devices, floorPlanDataUrl]);
+  }, [floorPlans, activeFloorPlanId]);
 
   const importJson = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
@@ -252,12 +320,11 @@ export function useAppState() {
           const parsed = JSON.parse(reader.result as string) as unknown;
           const state = parsePersistedMapState(parsed);
           if (!state) {
-            reject(new Error("Invalid file: expected layers and devices"));
+            reject(new Error("Invalid file: expected floor plans and devices"));
             return;
           }
-          setLayers(state.layers);
-          setDevices(state.devices);
-          setFloorPlanDataUrl(state.floorPlanDataUrl ?? null);
+          setFloorPlans(state.floorPlans);
+          setActiveFloorPlanId(state.activeFloorPlanId);
           setActiveLayerId(null);
           resolve();
         } catch (e) {
@@ -270,28 +337,68 @@ export function useAppState() {
   }, []);
 
   const resetAll = useCallback(() => {
-    setLayers([]);
-    setDevices([]);
-    setFloorPlanDataUrl(null);
+    const empty = emptyPersistedMapState();
+    setFloorPlans(empty.floorPlans);
+    setActiveFloorPlanId(empty.activeFloorPlanId);
     setActiveLayerId(null);
   }, []);
 
   const clearFloorPlan = useCallback(() => {
-    setFloorPlanDataUrl(null);
+    patchActiveFloor((fp) => ({ ...fp, floorPlanDataUrl: null }));
+  }, [patchActiveFloor]);
+
+  const uploadFloorPlanFromFile = useCallback(
+    async (file: File) => {
+      const dataUrl = await normalizeFloorPlanImage(file);
+      patchActiveFloor((fp) => ({ ...fp, floorPlanDataUrl: dataUrl }));
+    },
+    [patchActiveFloor]
+  );
+
+  const addFloorPlan = useCallback((name?: string) => {
+    const id = newId("floor");
+    setFloorPlans((prev) => [
+      ...prev,
+      {
+        id,
+        name: name?.trim() || `Floor ${prev.length + 1}`,
+        floorPlanDataUrl: null,
+        layers: [],
+        devices: [],
+      },
+    ]);
+    setActiveFloorPlanId(id);
+    setActiveLayerId(null);
   }, []);
 
-  const uploadFloorPlanFromFile = useCallback(async (file: File) => {
-    const dataUrl = await normalizeFloorPlanImage(file);
-    setFloorPlanDataUrl(dataUrl);
+  const renameFloorPlan = useCallback((id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setFloorPlans((prev) =>
+      prev.map((fp) => (fp.id === id ? { ...fp, name: trimmed } : fp))
+    );
+  }, []);
+
+  const deleteFloorPlan = useCallback((id: string) => {
+    setFloorPlans((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((fp) => fp.id !== id);
+    });
   }, []);
 
   return {
     layers,
     devices,
+    allDevicesFlat,
     floorPlanDataUrl,
-    setFloorPlanDataUrl,
+    floorPlans,
+    activeFloorPlanId,
+    setActiveFloorPlanId,
     clearFloorPlan,
     uploadFloorPlanFromFile,
+    addFloorPlan,
+    renameFloorPlan,
+    deleteFloorPlan,
     activeLayerId,
     setActiveLayerId,
     hydrated,

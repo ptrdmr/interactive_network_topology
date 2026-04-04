@@ -23,6 +23,13 @@ export default function Home() {
   const {
     layers,
     devices,
+    allDevicesFlat,
+    floorPlans,
+    activeFloorPlanId,
+    setActiveFloorPlanId,
+    addFloorPlan,
+    renameFloorPlan,
+    deleteFloorPlan,
     activeLayerId,
     setActiveLayerId,
     hydrated,
@@ -50,6 +57,12 @@ export default function Home() {
     cloudSyncEnabled,
   } = useAppState();
 
+  const activeFloorName = useMemo(
+    () =>
+      floorPlans.find((fp) => fp.id === activeFloorPlanId)?.name ?? "Floor",
+    [floorPlans, activeFloorPlanId]
+  );
+
   const [search, setSearch] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [deviceFormId, setDeviceFormId] = useState<string | null>(null);
@@ -68,11 +81,18 @@ export default function Home() {
     );
   }, [visibleDevices, search]);
 
-  const handleDeviceClick = useCallback((device: Device) => {
-    setDeviceFormId(null);
-    setRepositionMode(false);
-    setSelectedDeviceId(device.id);
-  }, []);
+  const handleDeviceClick = useCallback(
+    (device: Device) => {
+      const fp = floorPlans.find((f) => f.devices.some((d) => d.id === device.id));
+      if (fp && fp.id !== activeFloorPlanId) {
+        setActiveFloorPlanId(fp.id);
+      }
+      setDeviceFormId(null);
+      setRepositionMode(false);
+      setSelectedDeviceId(device.id);
+    },
+    [floorPlans, activeFloorPlanId, setActiveFloorPlanId]
+  );
 
   const handleClosePanel = useCallback(() => {
     setRepositionMode(false);
@@ -91,6 +111,34 @@ export default function Home() {
   useEffect(() => {
     if (activeLayerId) setRepositionMode(false);
   }, [activeLayerId]);
+
+  const handleSelectFloor = useCallback(
+    (id: string) => {
+      if (id === activeFloorPlanId) return;
+      setSelectedDeviceId(null);
+      setRepositionMode(false);
+      setDeviceFormId(null);
+      setActiveLayerId(null);
+      setActiveFloorPlanId(id);
+    },
+    [activeFloorPlanId, setActiveFloorPlanId, setActiveLayerId]
+  );
+
+  const handleAddFloor = useCallback(() => {
+    setSelectedDeviceId(null);
+    setDeviceFormId(null);
+    setRepositionMode(false);
+    addFloorPlan();
+  }, [addFloorPlan]);
+
+  const handleDeleteFloor = useCallback(
+    (id: string) => {
+      setSelectedDeviceId(null);
+      setDeviceFormId(null);
+      deleteFloorPlan(id);
+    },
+    [deleteFloorPlan]
+  );
 
   useEffect(() => {
     if (!repositionMode || !selectedDeviceId) return;
@@ -228,7 +276,9 @@ export default function Home() {
 
   const deviceFormDevice = deviceFormId ? deviceById(deviceFormId) : null;
 
-  const selectedDevice = selectedDeviceId ? deviceById(selectedDeviceId) : null;
+  const selectedDevice = selectedDeviceId
+    ? deviceById(selectedDeviceId) ?? null
+    : null;
 
   const openLayerCreate = useCallback(() => {
     setLayerFormLayer(null);
@@ -271,6 +321,13 @@ export default function Home() {
   return (
     <div className="h-full flex">
       <Sidebar
+        floorPlans={floorPlans}
+        activeFloorPlanId={activeFloorPlanId}
+        activeFloorName={activeFloorName}
+        onSelectFloor={handleSelectFloor}
+        onAddFloor={handleAddFloor}
+        onRenameFloor={renameFloorPlan}
+        onDeleteFloor={handleDeleteFloor}
         search={search}
         onSearchChange={setSearch}
         layers={layers}
@@ -336,7 +393,7 @@ export default function Home() {
           open={!!deviceFormId}
           device={deviceFormDevice}
           mode={deviceFormMode}
-          allDevices={devices}
+          allDevices={allDevicesFlat}
           excludeDeviceId={deviceFormDevice.id}
           onSave={(patch) => {
             updateDevice(deviceFormDevice.id, patch);
