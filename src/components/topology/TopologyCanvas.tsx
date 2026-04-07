@@ -122,6 +122,30 @@ function FitViewOnChange({
   return null;
 }
 
+function FitViewOnResize({ nodeCount }: { nodeCount: number }) {
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    if (nodeCount === 0) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        void fitView({ padding: 0.18, duration: 200 });
+      }, 120);
+    };
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
+    };
+  }, [fitView, nodeCount]);
+
+  return null;
+}
+
 const defaultEdgeToggles: EdgeKindToggles = {
   port: true,
   rack: true,
@@ -328,7 +352,7 @@ function TopologyCanvasInner({
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         minZoom={0.08}
-        maxZoom={1.75}
+        maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
         colorMode="dark"
         className="bg-transparent"
@@ -339,9 +363,9 @@ function TopologyCanvasInner({
           size={1}
           color="rgba(148, 163, 184, 0.12)"
         />
-        <Controls className="!bg-bg-card !border-border !shadow-lg [&_button]:!bg-bg-card [&_button]:!border-border [&_button:hover]:!bg-bg-hover [&_svg]:!fill-text-primary" />
+        <Controls className="!bg-bg-card !border-border !shadow-lg !mb-[max(0.5rem,env(safe-area-inset-bottom))] !ml-[max(0.5rem,env(safe-area-inset-left))] [&_button]:!bg-bg-card [&_button]:!border-border [&_button:hover]:!bg-bg-hover [&_svg]:!fill-text-primary" />
         <MiniMap
-          className="!bg-bg-card/95 !border-border"
+          className="!bg-bg-card/95 !border-border max-lg:hidden !mb-[max(0.5rem,env(safe-area-inset-bottom))]"
           nodeStrokeWidth={2}
           nodeColor={(node) => {
             if (node.type === "topologyGroup") {
@@ -357,6 +381,7 @@ function TopologyCanvasInner({
           revision={layoutRevision}
           nodeCount={nodes.length}
         />
+        <FitViewOnResize nodeCount={nodes.length} />
         <TopologyControls
           layers={layers}
           onToggleLayer={onToggleLayer}

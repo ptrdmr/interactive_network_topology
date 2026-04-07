@@ -31,7 +31,7 @@ export function LayerToggle({
 
   return (
     <div
-      className={`flex items-center gap-1 rounded-lg transition-all text-sm border ${
+      className={`flex items-center gap-1 rounded-lg transition-all text-sm border max-sm:gap-1.5 ${
         isActive
           ? "border-accent ring-1 ring-accent/40 bg-bg-card"
           : "border-transparent hover:bg-bg-card/50"
@@ -40,7 +40,7 @@ export function LayerToggle({
       <button
         type="button"
         onClick={onActivate}
-        className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-l-lg min-w-0 text-left text-text-primary"
+        className="flex-1 flex items-center gap-3 px-3 py-2.5 max-sm:py-3.5 rounded-l-lg min-w-0 text-left text-text-primary"
         title="Set as active layer for placing devices"
       >
         <div
@@ -70,14 +70,14 @@ export function LayerToggle({
         </div>
       </button>
 
-      <div className="flex items-center gap-0.5 pr-1 shrink-0">
+      <div className="flex items-center gap-0.5 pr-1 shrink-0 max-sm:gap-1">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1.5 rounded-md hover:bg-bg-hover text-text-muted hover:text-text-primary"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 hover:bg-bg-hover text-text-muted hover:text-text-primary max-sm:p-2.5"
           title="Edit layer"
         >
           <Pencil className="w-3.5 h-3.5" />
@@ -88,7 +88,7 @@ export function LayerToggle({
             e.stopPropagation();
             if (confirm(`Delete layer "${layer.name}" and all its devices?`)) onDelete();
           }}
-          className="p-1.5 rounded-md hover:bg-bg-hover text-text-muted hover:text-status-offline"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 hover:bg-bg-hover text-text-muted hover:text-status-offline max-sm:p-2.5"
           title="Delete layer"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -99,7 +99,7 @@ export function LayerToggle({
             e.stopPropagation();
             onToggleVisibility();
           }}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${
+          className={`relative inline-flex h-6 w-11 max-sm:h-7 max-sm:w-12 items-center rounded-full transition-colors shrink-0 ${
             isVisible ? "bg-accent" : "bg-border"
           }`}
           title={isVisible ? "Hide layer" : "Show layer"}
@@ -107,8 +107,8 @@ export function LayerToggle({
           aria-checked={isVisible}
         >
           <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
-              isVisible ? "translate-x-[18px]" : "translate-x-[3px]"
+            className={`inline-block h-3.5 w-3.5 max-sm:h-4 max-sm:w-4 rounded-full bg-white shadow-sm transition-transform ${
+              isVisible ? "translate-x-[22px] max-sm:translate-x-[26px]" : "translate-x-[3px]"
             }`}
           />
         </button>

@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/ui/Sidebar";
+import { LandscapeHint } from "@/components/ui/LandscapeHint";
 import { LayerForm } from "@/components/layers/LayerForm";
 import { TopologyCanvas } from "./TopologyCanvas";
 import type { FocusHopMode } from "./TopologyControls";
 import { DeviceDetailPanel } from "@/components/devices/DeviceDetailPanel";
 import { useAppState } from "@/hooks/useAppState";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
 
@@ -63,6 +65,13 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
   const [focusHopMode, setFocusHopMode] = useState<FocusHopMode>(3);
   const [layerFormOpen, setLayerFormOpen] = useState(false);
   const [layerFormLayer, setLayerFormLayer] = useState<Layer | null>(null);
+
+  const isLg = useMediaQuery("(min-width: 1024px)");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync to viewport width
+    setSidebarCollapsed(window.innerWidth < 1024);
+  }, []);
 
   useLayoutEffect(() => {
     if (!hydrated) return;
@@ -235,9 +244,15 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
           label: "Floor plan map",
           icon: "map",
         }}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
       />
 
-      <main className="flex-1 ml-0 md:ml-80 h-full min-h-0 transition-all duration-300 relative">
+      <main
+        className={`flex-1 h-full min-h-0 transition-all duration-300 relative ${
+          isLg ? (sidebarCollapsed ? "lg:ml-16" : "lg:ml-80") : "ml-0"
+        }`}
+      >
         <TopologyCanvas
           floorDevices={devices}
           layers={layers}
@@ -326,6 +341,8 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
           />
         );
       })()}
+
+      <LandscapeHint />
     </div>
   );
 }

@@ -104,7 +104,7 @@ export function DeviceDetailPanel({
     onMoveRackUnit;
 
   return (
-    <div className="fixed top-0 right-0 h-full w-96 z-50 bg-bg-secondary border-l border-border shadow-2xl flex flex-col animate-slide-in">
+    <div className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-secondary shadow-2xl animate-slide-in sm:max-w-md lg:w-96 lg:max-w-[24rem] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
       {/* Header */}
       <div className="flex flex-col gap-2 px-5 py-4 border-b border-border">
         {onBackToParent && (

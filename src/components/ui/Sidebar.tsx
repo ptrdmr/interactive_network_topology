@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { PanelLeftClose, PanelLeft, MapPin, LayoutGrid, Network } from "lucide-react";
+import { PanelLeftClose, PanelLeft, MapPin, LayoutGrid, Network, X } from "lucide-react";
 import { SearchBar } from "./SearchBar";
 import { LayerPanel } from "@/components/layers/LayerPanel";
 import { ExportImport } from "./ExportImport";
 import { FloorPlanUpload } from "./FloorPlanUpload";
 import type { Layer } from "@/types/layer";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 interface SidebarProps {
   /** Current floor name (map view). */
@@ -39,6 +39,9 @@ interface SidebarProps {
     /** `map` = floor plan; `network` = topology graph */
     icon?: "map" | "network";
   } | null;
+  /** Controlled drawer/sidebar: `true` = hidden rail or off-canvas overlay. */
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
 export function Sidebar({
@@ -64,29 +67,55 @@ export function Sidebar({
   onFloorPlanUpload,
   onFloorPlanReset,
   alternateView,
+  collapsed,
+  onCollapsedChange,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const isLg = useMediaQuery("(min-width: 1024px)");
   const AlternateNavIcon = alternateView?.icon === "map" ? MapPin : Network;
+
+  const showOverlayBackdrop = !isLg && !collapsed;
 
   return (
     <>
-      {/* Mobile toggle */}
+      {showOverlayBackdrop && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="fixed inset-0 z-30 bg-black/55 lg:hidden"
+          onClick={() => onCollapsedChange(true)}
+        />
+      )}
+
+      {/* Mobile / narrow: open map; overlay closed: show menu */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-bg-card border border-border text-text-primary md:hidden"
+        type="button"
+        onClick={() => onCollapsedChange(!collapsed)}
+        className="fixed z-50 p-2.5 rounded-lg bg-bg-card border border-border text-text-primary shadow-lg lg:hidden left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))]"
+        aria-expanded={!collapsed}
+        aria-controls="app-sidebar"
       >
         {collapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
       </button>
 
       <aside
+        id="app-sidebar"
         className={`fixed top-0 left-0 h-full z-40 flex flex-col bg-bg-secondary border-r border-border transition-all duration-300 ${
-          collapsed ? "-translate-x-full md:translate-x-0 md:w-16" : "w-80"
+          collapsed ? "-translate-x-full lg:translate-x-0 lg:w-16" : "w-[min(100vw-3rem,20rem)] sm:w-80 translate-x-0"
         }`}
       >
         {/* Header */}
-        <div className={`flex items-center border-b border-border ${collapsed ? "md:justify-center md:px-2 md:py-4" : "px-4 py-4 gap-3"}`}>
+        <div
+          className={`flex items-center border-b border-border shrink-0 ${
+            collapsed ? "lg:justify-center lg:px-2 lg:py-4" : "px-4 py-4 gap-3"
+          }`}
+        >
           {collapsed ? (
-            <button onClick={() => setCollapsed(false)} className="hidden md:block p-1 rounded hover:bg-bg-hover">
+            <button
+              type="button"
+              onClick={() => onCollapsedChange(false)}
+              className="hidden lg:block p-1 rounded hover:bg-bg-hover"
+              aria-label="Expand sidebar"
+            >
               <PanelLeft className="w-5 h-5 text-text-muted" />
             </button>
           ) : (
@@ -101,8 +130,18 @@ export function Sidebar({
                 </div>
               </div>
               <button
-                onClick={() => setCollapsed(true)}
-                className="hidden md:block p-1.5 rounded hover:bg-bg-hover transition-colors"
+                type="button"
+                onClick={() => onCollapsedChange(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-bg-hover transition-colors shrink-0"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5 text-text-muted" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onCollapsedChange(true)}
+                className="hidden lg:block p-1.5 rounded hover:bg-bg-hover transition-colors"
+                aria-label="Collapse sidebar"
               >
                 <PanelLeftClose className="w-4 h-4 text-text-muted" />
               </button>
@@ -110,9 +149,8 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Content — hidden when collapsed on desktop */}
         {!collapsed && (
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-6 flex flex-col min-h-0">
             <Link
               href="/"
               className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-bg-card text-sm font-medium text-text-primary hover:bg-bg-hover hover:border-accent/40 transition-colors"
@@ -131,10 +169,8 @@ export function Sidebar({
               </Link>
             )}
 
-            {/* Search */}
             <SearchBar value={search} onChange={onSearchChange} />
 
-            {/* Layer toggles */}
             <LayerPanel
               layers={layers}
               activeLayerId={activeLayerId}
@@ -158,7 +194,6 @@ export function Sidebar({
               </button>
             )}
 
-            {/* Stats summary */}
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted px-1">
                 Summary

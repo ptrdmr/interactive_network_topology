@@ -10,6 +10,9 @@ interface DeviceMarkerProps {
   layerRingColor: string;
   isSelected: boolean;
   onClick: (device: Device) => void;
+  /** When false, hover popover is suppressed (e.g. reposition mode). */
+  hoverEnabled?: boolean;
+  onHoverChange?: (device: Device | null) => void;
 }
 
 const statusRing: Record<DeviceStatus, string> = {
@@ -32,15 +35,24 @@ export function DeviceMarker({
   layerRingColor,
   isSelected,
   onClick,
+  hoverEnabled = true,
+  onHoverChange,
 }: DeviceMarkerProps) {
   const r = isSelected ? 14 : 10;
 
   return (
     <g
       className="cursor-pointer"
+      aria-label={tooltipTitle(device)}
       onClick={(e) => {
         e.stopPropagation();
         onClick(device);
+      }}
+      onMouseEnter={() => {
+        if (hoverEnabled) onHoverChange?.(device);
+      }}
+      onMouseLeave={() => {
+        if (hoverEnabled) onHoverChange?.(null);
       }}
     >
       {/* Pulse ring for maintenance */}
@@ -111,8 +123,6 @@ export function DeviceMarker({
         fill="#0a0f1a"
         opacity="0.5"
       />
-
-      <title>{tooltipTitle(device)}</title>
     </g>
   );
 }

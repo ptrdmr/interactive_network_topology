@@ -15,6 +15,9 @@ interface FloorPlanSVGProps {
   layers: Layer[];
   selectedDeviceId: string | null;
   onDeviceClick: (device: Device) => void;
+  onDeviceHover: (deviceId: string | null) => void;
+  /** When false, device hover popover is disabled (e.g. reposition mode). */
+  deviceHoverEnabled?: boolean;
   /** Bundled path or data URL from upload */
   floorPlanImageHref: string;
   /** Resolve device type fill color (defaults + user overrides). */
@@ -37,6 +40,8 @@ export function FloorPlanSVG({
   layers,
   selectedDeviceId,
   onDeviceClick,
+  onDeviceHover,
+  deviceHoverEnabled = true,
   floorPlanImageHref,
   resolveDeviceTypeColor,
   devMode,
@@ -57,8 +62,8 @@ export function FloorPlanSVG({
     <svg
       ref={svgRef}
       viewBox={`0 0 ${IMG_WIDTH} ${IMG_HEIGHT}`}
-      className="w-full h-full"
-      style={{ minWidth: 800, cursor }}
+      className="w-full h-full max-md:min-w-0 md:min-w-[800px]"
+      style={{ cursor }}
       onClick={onSvgClick}
       onMouseDown={onSvgMouseDown}
     >
@@ -121,6 +126,8 @@ export function FloorPlanSVG({
           layerRingColor={layerRingForDevice(device)}
           isSelected={selectedDeviceId === device.id}
           onClick={onDeviceClick}
+          hoverEnabled={deviceHoverEnabled}
+          onHoverChange={(d) => onDeviceHover(d?.id ?? null)}
         />
       ))}
 

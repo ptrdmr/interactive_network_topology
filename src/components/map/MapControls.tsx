@@ -13,10 +13,11 @@ export function MapControls({ onZoomIn, onZoomOut, onResetView, scale }: MapCont
   const percent = Math.round(scale * 100);
 
   return (
-    <div className="absolute bottom-4 right-4 flex flex-col items-center gap-1 z-10">
+    <div className="absolute z-10 flex flex-col items-center gap-1 bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]">
       <button
+        type="button"
         onClick={onZoomIn}
-        className="p-2 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
+        className="p-2.5 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
         title="Zoom in"
       >
         <ZoomIn className="w-4 h-4" />
@@ -27,8 +28,9 @@ export function MapControls({ onZoomIn, onZoomOut, onResetView, scale }: MapCont
       </span>
 
       <button
+        type="button"
         onClick={onZoomOut}
-        className="p-2 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
+        className="p-2.5 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
         title="Zoom out"
       >
         <ZoomOut className="w-4 h-4" />
@@ -37,9 +39,10 @@ export function MapControls({ onZoomIn, onZoomOut, onResetView, scale }: MapCont
       <div className="w-px h-2 bg-border" />
 
       <button
+        type="button"
         onClick={onResetView}
-        className="p-2 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
-        title="Reset view"
+        className="p-2.5 rounded-lg bg-bg-card/90 backdrop-blur border border-border text-text-primary hover:bg-bg-hover transition-colors"
+        title="Fit map to view"
       >
         <Maximize2 className="w-4 h-4" />
       </button>

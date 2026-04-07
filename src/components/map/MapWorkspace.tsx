@@ -3,22 +3,25 @@
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/ui/Sidebar";
+import { LandscapeHint } from "@/components/ui/LandscapeHint";
 import { MapCanvas } from "./MapCanvas";
 import { DeviceDetailPanel } from "@/components/devices/DeviceDetailPanel";
 import { DeviceForm } from "@/components/devices/DeviceForm";
 import { LayerForm } from "@/components/layers/LayerForm";
 import { useAppState } from "@/hooks/useAppState";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Layer } from "@/types/layer";
 import type { Device } from "@/types/device";
 import type { Zone } from "@/types/zone";
 import { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH } from "@/constants/floorPlan";
+import {
+  REPOSITION_SHIFT_MULT,
+  REPOSITION_STEP_PX,
+} from "@/constants/reposition";
 
 const zones: Zone[] = [];
 
 const DEFAULT_FLOOR_PLAN_HREF = "/floor-plan.jpg";
-
-const REPOSITION_STEP = 4;
-const REPOSITION_SHIFT_MULT = 5;
 
 interface MapWorkspaceProps {
   floorId: string;
@@ -76,6 +79,14 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
   const [layerFormOpen, setLayerFormOpen] = useState(false);
   const [layerFormLayer, setLayerFormLayer] = useState<Layer | null>(null);
   const [repositionMode, setRepositionMode] = useState(false);
+
+  const isLg = useMediaQuery("(min-width: 1024px)");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  useLayoutEffect(() => {
+    // Open docked sidebar on desktop after first paint; SSR has no window.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync to viewport width
+    setSidebarCollapsed(window.innerWidth < 1024);
+  }, []);
 
   useLayoutEffect(() => {
     if (!hydrated) return;
@@ -176,8 +187,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
 
       e.preventDefault();
       const step = e.shiftKey
-        ? REPOSITION_STEP * REPOSITION_SHIFT_MULT
-        : REPOSITION_STEP;
+        ? REPOSITION_STEP_PX * REPOSITION_SHIFT_MULT
+        : REPOSITION_STEP_PX;
       let dx = 0;
       let dy = 0;
       if (e.key === "ArrowLeft") dx = -step;
@@ -198,6 +209,24 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [repositionMode, selectedDeviceId, devices, updateDevice]);
+
+  const handleRepositionNudge = useCallback(
+    (dx: number, dy: number) => {
+      if (!selectedDeviceId) return;
+      const device = devices.find((d) => d.id === selectedDeviceId);
+      if (!device || device.parentId) return;
+      const nx = Math.min(
+        FLOOR_PLAN_WIDTH,
+        Math.max(0, device.position.x + dx)
+      );
+      const ny = Math.min(
+        FLOOR_PLAN_HEIGHT,
+        Math.max(0, device.position.y + dy)
+      );
+      updateDevice(device.id, { position: { x: nx, y: ny } });
+    },
+    [selectedDeviceId, devices, updateDevice]
+  );
 
   const handlePlaceAt = useCallback(
     (position: { x: number; y: number }) => {
@@ -366,9 +395,15 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           label: "Topology view",
           icon: "network",
         }}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
       />
 
-      <main className="flex-1 ml-0 md:ml-80 h-full transition-all duration-300">
+      <main
+        className={`flex-1 h-full min-h-0 transition-all duration-300 ${
+          isLg ? (sidebarCollapsed ? "lg:ml-16" : "lg:ml-80") : "ml-0"
+        }`}
+      >
         <MapCanvas
           zones={zones}
           devices={filteredDevices}
@@ -383,6 +418,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
             repositionMode && selectedDevice ? selectedDevice.name : null
           }
           onExitReposition={handleExitRepositionMode}
+          onRepositionNudge={handleRepositionNudge}
           resolveDeviceTypeColor={resolveDeviceTypeColor}
         />
       </main>
@@ -475,6 +511,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           />
         );
       })()}
+
+      <LandscapeHint />
     </div>
   );
 }

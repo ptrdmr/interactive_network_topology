@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Panel } from "@xyflow/react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useReactFlow } from "@xyflow/react";
 import {
   ChevronDown,
@@ -60,11 +61,12 @@ export function TopologyControls({
   const { fitView } = useReactFlow();
   const collapsedSet = new Set(collapsedLayerIds);
   const [panelOpen, setPanelOpen] = useState(true);
+  const narrowPanel = useMediaQuery("(max-width: 520px)");
 
   return (
     <Panel
       position="top-left"
-      className={`m-3 max-w-[min(100%,24rem)] rounded-lg border border-border bg-bg-card/95 shadow-lg backdrop-blur-sm text-xs text-text-primary ${
+      className={`!m-0 mb-3 mr-3 max-w-[min(100%,calc(100vw-2.5rem-env(safe-area-inset-left)-env(safe-area-inset-right)))] rounded-lg border border-border bg-bg-card/95 shadow-lg backdrop-blur-sm text-xs text-text-primary ml-[max(0.75rem,env(safe-area-inset-left))] mt-[max(0.75rem,env(safe-area-inset-top))] ${
         panelOpen
           ? "p-3 max-h-[min(90vh,42rem)] overflow-y-auto"
           : "p-2 overflow-hidden"
@@ -79,7 +81,7 @@ export function TopologyControls({
       >
         <LayoutGrid className="w-4 h-4 text-accent-light shrink-0" />
         <span className="font-semibold text-sm text-text-primary truncate flex-1 min-w-0">
-          Topology
+          {narrowPanel ? "Graph" : "Topology"}
         </span>
         {panelOpen ? (
           <ChevronUp className="w-4 h-4 text-text-muted shrink-0" aria-hidden />
