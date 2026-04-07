@@ -23,7 +23,8 @@ const statusRing: Record<DeviceStatus, string> = {
 
 function tooltipTitle(device: Device): string {
   const extra =
-    device.properties.find((p) => p.key.toLowerCase() === "ip")?.value ??
+    device.ipAddress?.trim() ||
+    device.properties.find((p) => p.key.toLowerCase() === "ip")?.value?.trim() ||
     device.properties[0]?.value;
   if (extra) return `${device.name} (${extra})`;
   return device.name;

@@ -14,7 +14,7 @@ export default function HomePage() {
     addFloorPlan,
     renameFloorPlan,
     deleteFloorPlan,
-    exportJson,
+    exportCsv,
     importJson,
     cloudSyncEnabled,
   } = useAppState();
@@ -73,7 +73,7 @@ export default function HomePage() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Project data
           </h3>
-          <ExportImport onExport={exportJson} onImport={importJson} />
+          <ExportImport onExport={exportCsv} onImport={importJson} />
           {cloudSyncEnabled && (
             <p className="text-[10px] text-text-muted mt-3">
               Cloud sync: map data is saved to Supabase (shared for all visitors).

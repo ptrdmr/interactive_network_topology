@@ -19,6 +19,7 @@ import {
 } from "@/constants/deviceTypes";
 import { normalizeFloorPlanImage } from "@/lib/floorPlanImage";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { buildDeviceInventoryCsv } from "@/lib/exportCsv";
 import {
   emptyPersistedMapState,
   parsePersistedMapState,
@@ -365,22 +366,19 @@ function useAppStateImpl() {
     );
   }, []);
 
-  const exportJson = useCallback(() => {
-    const data: PersistedMapState = {
-      floorPlans,
-      activeFloorPlanId,
-      deviceTypeColorOverrides,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
+  /** Spreadsheet-friendly device inventory (all floors). Not a full backup. */
+  const exportCsv = useCallback(() => {
+    const text = buildDeviceInventoryCsv(floorPlans);
+    const blob = new Blob(["\ufeff", text], {
+      type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `concourse-map-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `concourse-devices-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides]);
+  }, [floorPlans]);
 
   const importJson = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
@@ -492,7 +490,7 @@ function useAppStateImpl() {
     addDevice,
     updateDevice,
     deleteDevice,
-    exportJson,
+    exportCsv,
     importJson,
     resetAll,
     deviceTypeColorOverrides,

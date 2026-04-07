@@ -14,6 +14,8 @@ interface SidebarProps {
   activeFloorName: string;
   search: string;
   onSearchChange: (value: string) => void;
+  /** Explains what search affects (e.g. map vs topology) and optional result counts. */
+  searchHint?: string;
   layers: Layer[];
   activeLayerId: string | null;
   onClearActiveLayer: () => void;
@@ -48,6 +50,7 @@ export function Sidebar({
   activeFloorName,
   search,
   onSearchChange,
+  searchHint,
   layers,
   activeLayerId,
   onClearActiveLayer,
@@ -169,7 +172,14 @@ export function Sidebar({
               </Link>
             )}
 
-            <SearchBar value={search} onChange={onSearchChange} />
+            <div>
+              <SearchBar value={search} onChange={onSearchChange} />
+              {searchHint ? (
+                <p className="mt-2 text-[10px] leading-snug text-text-muted px-0.5">
+                  {searchHint}
+                </p>
+              ) : null}
+            </div>
 
             <LayerPanel
               layers={layers}

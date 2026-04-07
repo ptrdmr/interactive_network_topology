@@ -28,6 +28,10 @@ export type FocusHopMode = 1 | 2 | 3 | 4 | "all";
 interface TopologyControlsProps {
   layers: Layer[];
   onToggleLayer: (layerId: string) => void;
+  /** Set every layer visible (same as map sidebar). */
+  onShowAllLayers: () => void;
+  /** Hide every layer. */
+  onHideAllLayers: () => void;
   collapsedLayerIds: string[];
   onToggleLayerCollapse: (layerId: string) => void;
   direction: LayoutDirection;
@@ -45,6 +49,8 @@ interface TopologyControlsProps {
 export function TopologyControls({
   layers,
   onToggleLayer,
+  onShowAllLayers,
+  onHideAllLayers,
   collapsedLayerIds,
   onToggleLayerCollapse,
   direction,
@@ -238,9 +244,29 @@ export function TopologyControls({
 
         {layers.length > 0 && (
           <div>
-            <p className="text-text-muted mb-1.5 uppercase tracking-wide text-[10px]">
-              Layers
-            </p>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <p className="text-text-muted uppercase tracking-wide text-[10px]">
+                Layers
+              </p>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={onShowAllLayers}
+                  className="px-2 py-0.5 rounded text-[10px] font-medium text-accent-light hover:bg-bg-hover border border-border/60 transition-colors"
+                  title="Show all layers on the graph"
+                >
+                  All on
+                </button>
+                <button
+                  type="button"
+                  onClick={onHideAllLayers}
+                  className="px-2 py-0.5 rounded text-[10px] font-medium text-text-muted hover:bg-bg-hover hover:text-text-primary border border-border/60 transition-colors"
+                  title="Hide all layers on the graph"
+                >
+                  All off
+                </button>
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
               {layers.map((layer) => {
                 const isCollapsed = collapsedSet.has(layer.id);

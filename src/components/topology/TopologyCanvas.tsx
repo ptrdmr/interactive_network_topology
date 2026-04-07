@@ -24,6 +24,7 @@ import {
   type EdgeKindToggles,
   type FocusHopMode,
 } from "./TopologyControls";
+import { deviceMatchesSearch } from "@/lib/deviceSearch";
 import {
   buildDeviceContextList,
   buildGraph,
@@ -160,7 +161,9 @@ export interface TopologyCanvasInnerProps {
   selectedDeviceId: string | null;
   onSelectDeviceId: (id: string | null) => void;
   onToggleLayer: (layerId: string) => void;
-  /** Sidebar search: filter devices by name/description after focus/layer filter. */
+  onShowAllLayers: () => void;
+  onHideAllLayers: () => void;
+  /** Sidebar search: filter devices (same fields as map search) after focus/layer filter. */
   searchQuery: string;
   focusDeviceId: string | null;
   onFocusDeviceId: (id: string | null) => void;
@@ -176,6 +179,8 @@ function TopologyCanvasInner({
   selectedDeviceId,
   onSelectDeviceId,
   onToggleLayer,
+  onShowAllLayers,
+  onHideAllLayers,
   searchQuery,
   focusDeviceId,
   onFocusDeviceId,
@@ -225,13 +230,9 @@ function TopologyCanvasInner({
       pool = filterDevicesForTopology(floorDevices, layers);
     }
 
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
     if (q) {
-      pool = pool.filter(
-        (d) =>
-          d.name.toLowerCase().includes(q) ||
-          d.description.toLowerCase().includes(q)
-      );
+      pool = pool.filter((d) => deviceMatchesSearch(d, q));
     }
 
     const ctx = buildDeviceContextList(pool, layers, resolveDeviceTypeColor);
@@ -385,6 +386,8 @@ function TopologyCanvasInner({
         <TopologyControls
           layers={layers}
           onToggleLayer={onToggleLayer}
+          onShowAllLayers={onShowAllLayers}
+          onHideAllLayers={onHideAllLayers}
           collapsedLayerIds={collapsedLayerIds}
           onToggleLayerCollapse={toggleLayerCollapse}
           direction={direction}

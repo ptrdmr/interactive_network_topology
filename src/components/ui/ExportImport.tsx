@@ -40,7 +40,7 @@ export function ExportImport({ onExport, onImport }: ExportImportProps) {
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary hover:bg-bg-hover transition-colors"
         >
           <Download className="w-4 h-4 shrink-0" />
-          Export JSON
+          Export CSV
         </button>
         <button
           type="button"
@@ -59,6 +59,11 @@ export function ExportImport({ onExport, onImport }: ExportImportProps) {
           onChange={handleFile}
         />
       </div>
+      <p className="text-[10px] text-text-muted px-1 leading-snug">
+        CSV is a device inventory for Excel or Google Sheets. Import still uses a{" "}
+        <span className="text-text-secondary">JSON backup</span> to restore the full map
+        (layers, positions, and links).
+      </p>
       {error && (
         <p className="text-xs text-status-offline px-1">{error}</p>
       )}

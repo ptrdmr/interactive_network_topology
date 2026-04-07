@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   X,
   Server,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Circle,
   ArrowUpRight,
   Pencil,
@@ -23,6 +25,8 @@ interface DeviceDetailPanelProps {
   layerName: string;
   layerKind: LayerKind;
   rackColor: string;
+  /** Map marker fill colors for device types (rack unit accent + hover preview). */
+  resolveDeviceTypeColor: (typeId: Device["deviceTypeId"]) => string;
   children: Device[];
   connectedDevices: Device[];
   /** Resolve port link targets by id (for names and navigation). */
@@ -46,11 +50,17 @@ interface DeviceDetailPanelProps {
   onFocusInTopology?: () => void;
 }
 
+function formatInstallDate(iso: string): string {
+  const d = new Date(iso + "T12:00:00");
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+}
+
 function DeviceListItem({ device, onClick }: { device: Device; onClick: () => void }) {
   const subtitle =
-    device.properties[0] != null
+    device.ipAddress?.trim() ||
+    (device.properties[0] != null
       ? `${device.properties[0].key}: ${device.properties[0].value}`
-      : device.description || "—";
+      : device.description || "—");
 
   return (
     <button
@@ -80,6 +90,7 @@ export function DeviceDetailPanel({
   layerName,
   layerKind,
   rackColor,
+  resolveDeviceTypeColor,
   children,
   connectedDevices,
   getDeviceById,
@@ -97,6 +108,12 @@ export function DeviceDetailPanel({
   onExitRepositionMode,
   onFocusInTopology,
 }: DeviceDetailPanelProps) {
+  const [portsExpanded, setPortsExpanded] = useState(false);
+
+  useEffect(() => {
+    setPortsExpanded(false);
+  }, [device.id]);
+
   const showRackStack =
     layerKind === "server" &&
     !device.parentId &&
@@ -207,6 +224,67 @@ export function DeviceDetailPanel({
           </section>
         )}
 
+        {(!!device.brand?.trim() ||
+          !!device.ipAddress?.trim() ||
+          !!device.macAddress?.trim() ||
+          !!device.physicalLocation?.trim() ||
+          !!device.serialNumber?.trim() ||
+          !!device.installDate?.trim()) && (
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+              Device details
+            </h3>
+            <div className="bg-bg-card rounded-lg px-3 py-1 divide-y divide-border/40">
+              {device.brand?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Brand</span>
+                  <span className="text-xs text-text-primary text-right break-words">{device.brand.trim()}</span>
+                </div>
+              )}
+              {device.ipAddress?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">IP address</span>
+                  <span className="text-xs text-text-primary font-mono text-right break-all">
+                    {device.ipAddress.trim()}
+                  </span>
+                </div>
+              )}
+              {device.macAddress?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">MAC address</span>
+                  <span className="text-xs text-text-primary font-mono text-right break-all">
+                    {device.macAddress.trim()}
+                  </span>
+                </div>
+              )}
+              {device.physicalLocation?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Physical location</span>
+                  <span className="text-xs text-text-primary text-right break-words">
+                    {device.physicalLocation.trim()}
+                  </span>
+                </div>
+              )}
+              {device.serialNumber?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Serial number</span>
+                  <span className="text-xs text-text-primary font-mono text-right break-all">
+                    {device.serialNumber.trim()}
+                  </span>
+                </div>
+              )}
+              {device.installDate?.trim() && (
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Install date</span>
+                  <span className="text-xs text-text-primary text-right">
+                    {formatInstallDate(device.installDate.trim())}
+                  </span>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {device.properties.length > 0 && (
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
@@ -225,9 +303,21 @@ export function DeviceDetailPanel({
 
         {device.portSlots && device.portSlots.length > 0 && (
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
-              <Network className="w-3.5 h-3.5" /> Ports ({device.portSlots.length})
-            </h3>
+            <button
+              type="button"
+              onClick={() => setPortsExpanded((v) => !v)}
+              className="w-full flex items-center gap-2 mb-2 text-left rounded-lg px-2 py-1.5 -mx-2 hover:bg-bg-hover/80 transition-colors"
+            >
+              {portsExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 shrink-0 text-text-muted" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 shrink-0 text-text-muted" />
+              )}
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                <Network className="w-3.5 h-3.5" /> Ports ({device.portSlots.length})
+              </span>
+            </button>
+            {portsExpanded && (
             <div className="space-y-2">
               {device.portSlots.map((slot, i) => {
                 const target = slot.connectedDeviceId
@@ -289,6 +379,7 @@ export function DeviceDetailPanel({
                 );
               })}
             </div>
+            )}
           </section>
         )}
 
@@ -299,6 +390,8 @@ export function DeviceDetailPanel({
             </h3>
             <ServerRackStack
               rackColor={rackColor}
+              layerName={layerName}
+              resolveDeviceTypeColor={resolveDeviceTypeColor}
               // eslint-disable-next-line react/no-children-prop -- ServerRackStack rack units list
               children={children}
               onSelectDevice={onSelectDevice}

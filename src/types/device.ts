@@ -29,6 +29,15 @@ export interface Device {
   rackOrder?: number;
   status: DeviceStatus;
   description: string;
+  /** Vendor / manufacturer (may match a per–device-type suggestion or a custom value). */
+  brand?: string;
+  ipAddress?: string;
+  macAddress?: string;
+  /** Where the hardware lives (room, rack, facade, etc.). */
+  physicalLocation?: string;
+  serialNumber?: string;
+  /** ISO date string `YYYY-MM-DD` when known. */
+  installDate?: string;
   properties: DeviceProperty[];
   /** Port count = length; each slot holds optional label, notes, and link to another device. */
   portSlots?: PortSlot[];

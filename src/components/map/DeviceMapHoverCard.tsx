@@ -1,6 +1,11 @@
 import type { Device } from "@/types/device";
 import { DEVICE_TYPE_LABELS } from "@/constants/deviceTypes";
 
+function formatInstallDateLabel(iso: string): string {
+  const d = new Date(iso + "T12:00:00");
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+}
+
 const STATUS_LABEL: Record<Device["status"], string> = {
   online: "Online",
   offline: "Offline",
@@ -24,6 +29,13 @@ export function DeviceMapDockPanel({
   const typeLabel = DEVICE_TYPE_LABELS[device.deviceTypeId] ?? "Device";
   const desc = device.description?.trim();
   const portCount = device.portSlots?.length ?? 0;
+  const hasStructuredDetails =
+    !!device.brand?.trim() ||
+    !!device.ipAddress?.trim() ||
+    !!device.macAddress?.trim() ||
+    !!device.physicalLocation?.trim() ||
+    !!device.serialNumber?.trim() ||
+    !!device.installDate?.trim();
 
   return (
     <div className="rounded-xl border-2 border-accent/50 bg-bg-card/98 shadow-2xl backdrop-blur-md text-left overflow-hidden flex flex-col max-h-[min(42vh,22rem)] w-full">
@@ -43,6 +55,51 @@ export function DeviceMapDockPanel({
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-text-muted mb-1">Description</p>
             <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap break-words">{desc}</p>
+          </div>
+        ) : null}
+        {hasStructuredDetails ? (
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-text-muted mb-2">Device details</p>
+            <dl className="space-y-2 text-sm">
+              {device.brand?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">Brand</dt>
+                  <dd className="text-text-primary break-words">{device.brand.trim()}</dd>
+                </div>
+              ) : null}
+              {device.ipAddress?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">IP</dt>
+                  <dd className="text-text-primary font-mono break-all">{device.ipAddress.trim()}</dd>
+                </div>
+              ) : null}
+              {device.macAddress?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">MAC</dt>
+                  <dd className="text-text-primary font-mono break-all">{device.macAddress.trim()}</dd>
+                </div>
+              ) : null}
+              {device.physicalLocation?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">Location</dt>
+                  <dd className="text-text-primary break-words">{device.physicalLocation.trim()}</dd>
+                </div>
+              ) : null}
+              {device.serialNumber?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">Serial</dt>
+                  <dd className="text-text-primary font-mono break-all">{device.serialNumber.trim()}</dd>
+                </div>
+              ) : null}
+              {device.installDate?.trim() ? (
+                <div className="grid grid-cols-[minmax(5rem,32%)_1fr] gap-x-2">
+                  <dt className="text-text-muted">Installed</dt>
+                  <dd className="text-text-primary">
+                    {formatInstallDateLabel(device.installDate.trim())}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
           </div>
         ) : null}
         {portCount > 0 ? (
@@ -66,7 +123,10 @@ export function DeviceMapDockPanel({
             </dl>
           </div>
         ) : null}
-        {!desc && portCount === 0 && device.properties.length === 0 ? (
+        {!desc &&
+        portCount === 0 &&
+        device.properties.length === 0 &&
+        !hasStructuredDetails ? (
           <p className="text-sm text-text-muted italic">No extra details for this device.</p>
         ) : null}
       </div>

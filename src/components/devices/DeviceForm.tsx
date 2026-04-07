@@ -8,6 +8,7 @@ import {
   DEVICE_TYPE_LABELS,
   type DeviceTypeId,
 } from "@/constants/deviceTypes";
+import { getBrandOptionsForDeviceType } from "@/constants/deviceBrands";
 
 interface DeviceFormProps {
   open: boolean;
@@ -63,6 +64,26 @@ export function DeviceForm({
   /** String so users can type multi-digit counts before blur. */
   const [portCountDraft, setPortCountDraft] = useState("0");
   const [deviceTypeId, setDeviceTypeId] = useState<DeviceTypeId>("other");
+  const [brand, setBrand] = useState("");
+  const [ipAddress, setIpAddress] = useState("");
+  const [macAddress, setMacAddress] = useState("");
+  const [physicalLocation, setPhysicalLocation] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [installDate, setInstallDate] = useState("");
+  /** True when the user chose “Other…” or the saved brand isn’t in the current type’s list. */
+  const [brandIsCustom, setBrandIsCustom] = useState(false);
+
+  const brandOptions = useMemo(
+    () => [...getBrandOptionsForDeviceType(deviceTypeId)],
+    [deviceTypeId]
+  );
+
+  const brandSelectValue = useMemo(() => {
+    if (!brand.trim() && !brandIsCustom) return "";
+    if (brandIsCustom) return "__other__";
+    if (brandOptions.includes(brand)) return brand;
+    return "__other__";
+  }, [brand, brandOptions, brandIsCustom]);
 
   const connectionOptions = useMemo(
     () =>
@@ -85,7 +106,25 @@ export function DeviceForm({
       Array.isArray(slots) && slots.length > 0 ? slots.map((s) => ({ ...s })) : [];
     setPortSlots(list);
     setPortCountDraft(String(list.length));
-    setDeviceTypeId(device.deviceTypeId ?? "other");
+    const tid = device.deviceTypeId ?? "other";
+    setDeviceTypeId(tid);
+    const opts = [...getBrandOptionsForDeviceType(tid)];
+    const br = device.brand?.trim() ?? "";
+    if (!br) {
+      setBrand("");
+      setBrandIsCustom(false);
+    } else if (opts.includes(br)) {
+      setBrand(br);
+      setBrandIsCustom(false);
+    } else {
+      setBrand(device.brand ?? "");
+      setBrandIsCustom(true);
+    }
+    setIpAddress(device.ipAddress ?? "");
+    setMacAddress(device.macAddress ?? "");
+    setPhysicalLocation(device.physicalLocation ?? "");
+    setSerialNumber(device.serialNumber ?? "");
+    setInstallDate(device.installDate ?? "");
   }, [open, device]);
 
   if (!open || !device) return null;
@@ -97,11 +136,18 @@ export function DeviceForm({
     const cleanedProps = properties
       .filter((p) => p.key.trim() || p.value.trim())
       .map((p) => ({ key: p.key.trim(), value: p.value.trim() }));
+    const brandTrim = brand.trim();
     onSave({
       name: trimmed,
       description: description.trim(),
       status,
       deviceTypeId,
+      brand: brandTrim || undefined,
+      ipAddress: ipAddress.trim() || undefined,
+      macAddress: macAddress.trim() || undefined,
+      physicalLocation: physicalLocation.trim() || undefined,
+      serialNumber: serialNumber.trim() || undefined,
+      installDate: installDate.trim() || undefined,
       properties: cleanedProps,
       portSlots: cleanPortSlots(portSlots),
     });
@@ -209,7 +255,15 @@ export function DeviceForm({
             </p>
             <select
               value={deviceTypeId}
-              onChange={(e) => setDeviceTypeId(e.target.value as DeviceTypeId)}
+              onChange={(e) => {
+                const next = e.target.value as DeviceTypeId;
+                setDeviceTypeId(next);
+                const opts = [...getBrandOptionsForDeviceType(next)];
+                const b = brand.trim();
+                if (!b) setBrandIsCustom(false);
+                else if (!opts.includes(b)) setBrandIsCustom(true);
+                else setBrandIsCustom(false);
+              }}
               className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               {DEVICE_TYPE_IDS.map((id) => (
@@ -221,6 +275,45 @@ export function DeviceForm({
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">Brand</label>
+            <p className="text-[10px] text-text-muted mb-1.5">
+              Suggestions depend on device type; choose Other to type any brand.
+            </p>
+            <select
+              value={brandSelectValue}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") {
+                  setBrand("");
+                  setBrandIsCustom(false);
+                } else if (v === "__other__") {
+                  setBrandIsCustom(true);
+                } else {
+                  setBrand(v);
+                  setBrandIsCustom(false);
+                }
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value="">— None —</option>
+              {brandOptions.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+              <option value="__other__">Other…</option>
+            </select>
+            {brandSelectValue === "__other__" && (
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                className="mt-2 w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="Brand name"
+              />
+            )}
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Description</label>
             <textarea
               value={description}
@@ -229,6 +322,59 @@ export function DeviceForm({
               className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-y min-h-[72px]"
               placeholder="Notes about this device…"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-text-muted mb-1.5">IP address</label>
+              <input
+                value={ipAddress}
+                onChange={(e) => setIpAddress(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="e.g. 192.168.1.10"
+                autoComplete="off"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-text-muted mb-1.5">MAC address</label>
+              <input
+                value={macAddress}
+                onChange={(e) => setMacAddress(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="e.g. aa:bb:cc:dd:ee:ff"
+                autoComplete="off"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-text-muted mb-1.5">
+                Physical location
+              </label>
+              <input
+                value={physicalLocation}
+                onChange={(e) => setPhysicalLocation(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="Room, rack, building, landmark…"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Serial number</label>
+              <input
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="Asset / OEM serial"
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Install date</label>
+              <input
+                type="date"
+                value={installDate}
+                onChange={(e) => setInstallDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+              />
+            </div>
           </div>
 
           <div>

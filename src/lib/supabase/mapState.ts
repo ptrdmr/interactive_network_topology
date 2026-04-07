@@ -50,6 +50,20 @@ function normalizePortSlot(raw: unknown): PortSlot {
   return slot;
 }
 
+function trimOptString(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  return t === "" ? undefined : t;
+}
+
+/** Keep only plausible `YYYY-MM-DD` values from persisted JSON. */
+function normalizeInstallDate(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return undefined;
+  return t;
+}
+
 function normalizeDevice(raw: Device): Device {
   const portSlots = Array.isArray((raw as { portSlots?: unknown }).portSlots)
     ? (raw as { portSlots: unknown[] }).portSlots.map(normalizePortSlot)
@@ -61,6 +75,12 @@ function normalizeDevice(raw: Device): Device {
     ...raw,
     deviceTypeId,
     portSlots,
+    brand: trimOptString((raw as { brand?: unknown }).brand),
+    ipAddress: trimOptString((raw as { ipAddress?: unknown }).ipAddress),
+    macAddress: trimOptString((raw as { macAddress?: unknown }).macAddress),
+    physicalLocation: trimOptString((raw as { physicalLocation?: unknown }).physicalLocation),
+    serialNumber: trimOptString((raw as { serialNumber?: unknown }).serialNumber),
+    installDate: normalizeInstallDate((raw as { installDate?: unknown }).installDate),
   };
 }
 

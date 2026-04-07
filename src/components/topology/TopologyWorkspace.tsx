@@ -34,7 +34,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
     toggleLayerVisibility,
     showAllLayers,
     hideAllLayers,
-    exportJson,
+    exportCsv,
     importJson,
     floorPlanDataUrl,
     uploadFloorPlanFromFile,
@@ -221,6 +221,11 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         activeFloorName={activeFloorName}
         search={search}
         onSearchChange={setSearch}
+        searchHint={
+          search.trim()
+            ? "Showing only matching devices as nodes in the graph."
+            : "Filters which devices appear in the topology view (name, description, IP, properties, ports…)."
+        }
         layers={layers}
         activeLayerId={activeLayerId}
         onClearActiveLayer={() => setActiveLayerId(null)}
@@ -233,7 +238,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         onDeleteLayer={deleteLayer}
         deviceCountByLayer={deviceCountByLayer}
         stats={stats}
-        onExport={exportJson}
+        onExport={exportCsv}
         onImport={importJson}
         cloudSyncEnabled={cloudSyncEnabled}
         hasCustomFloorPlan={!!floorPlanDataUrl}
@@ -260,6 +265,8 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
           selectedDeviceId={selectedDeviceId}
           onSelectDeviceId={setSelectedDeviceId}
           onToggleLayer={toggleLayerVisibility}
+          onShowAllLayers={showAllLayers}
+          onHideAllLayers={hideAllLayers}
           searchQuery={search}
           focusDeviceId={focusDeviceId}
           onFocusDeviceId={setFocusDeviceId}
@@ -302,6 +309,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
             layerName={selLayer?.name ?? "Unknown layer"}
             layerKind={selLayer?.kind ?? "standard"}
             rackColor={selLayer?.color ?? "#64748b"}
+            resolveDeviceTypeColor={resolveDeviceTypeColor}
             // eslint-disable-next-line react/no-children-prop -- matches DeviceDetailPanel rack-units prop name
             children={childrenOf(selectedDevice.id)}
             connectedDevices={connectedTo(selectedDevice.id)}

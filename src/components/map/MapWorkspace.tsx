@@ -18,6 +18,7 @@ import {
   REPOSITION_SHIFT_MULT,
   REPOSITION_STEP_PX,
 } from "@/constants/reposition";
+import { deviceMatchesSearch } from "@/lib/deviceSearch";
 
 const zones: Zone[] = [];
 
@@ -57,7 +58,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     addDevice,
     updateDevice,
     deleteDevice,
-    exportJson,
+    exportCsv,
     importJson,
     floorPlanDataUrl,
     uploadFloorPlanFromFile,
@@ -111,13 +112,9 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
   }, [hydrated, floorId, selectParam, router]);
 
   const filteredDevices = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return visibleDevices;
-    return visibleDevices.filter(
-      (d) =>
-        d.name.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q)
-    );
+    return visibleDevices.filter((d) => deviceMatchesSearch(d, q));
   }, [visibleDevices, search]);
 
   const handleDeviceClick = useCallback(
@@ -372,6 +369,11 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         activeFloorName={activeFloorName}
         search={search}
         onSearchChange={setSearch}
+        searchHint={
+          search.trim()
+            ? `Showing ${filteredDevices.length} of ${visibleDevices.length} devices on the floor plan.`
+            : "Filters which devices appear as markers on the map (name, description, IP, properties, ports…)."
+        }
         layers={layers}
         activeLayerId={activeLayerId}
         onClearActiveLayer={() => setActiveLayerId(null)}
@@ -384,7 +386,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         onDeleteLayer={deleteLayer}
         deviceCountByLayer={deviceCountByLayer}
         stats={stats}
-        onExport={exportJson}
+        onExport={exportCsv}
         onImport={importJson}
         cloudSyncEnabled={cloudSyncEnabled}
         hasCustomFloorPlan={!!floorPlanDataUrl}
@@ -476,6 +478,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
             layerName={selLayer?.name ?? "Unknown layer"}
             layerKind={selLayer?.kind ?? "standard"}
             rackColor={selLayer?.color ?? "#64748b"}
+            resolveDeviceTypeColor={resolveDeviceTypeColor}
             children={childrenOf(selectedDevice.id)}
             connectedDevices={connectedTo(selectedDevice.id)}
             getDeviceById={deviceById}
