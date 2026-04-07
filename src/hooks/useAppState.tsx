@@ -65,6 +65,13 @@ function useAppStateImpl() {
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * JSON snapshot of state right after initial load (local + optional Supabase).
+   * Used to skip debounced cloud saves until the user (or import) actually changes
+   * something — otherwise a failed Supabase read + empty localStorage could upload
+   * empty state and wipe the shared cloud row.
+   */
+  const initialPersistedSnapshotRef = useRef<string | null>(null);
 
   const cloudSyncEnabled = isSupabaseConfigured();
 
@@ -101,6 +108,11 @@ function useAppStateImpl() {
       }
 
       if (cancelled) return;
+      initialPersistedSnapshotRef.current = JSON.stringify({
+        floorPlans: initial.floorPlans,
+        activeFloorPlanId: initial.activeFloorPlanId,
+        deviceTypeColorOverrides: initial.deviceTypeColorOverrides ?? {},
+      });
       setFloorPlans(initial.floorPlans);
       setActiveFloorPlanId(initial.activeFloorPlanId);
       setDeviceTypeColorOverrides(initial.deviceTypeColorOverrides ?? {});
@@ -134,14 +146,22 @@ function useAppStateImpl() {
   useEffect(() => {
     if (!hydrated || !cloudSyncEnabled) return;
 
+    const payload: PersistedMapState = {
+      floorPlans,
+      activeFloorPlanId,
+      deviceTypeColorOverrides,
+    };
+    if (
+      initialPersistedSnapshotRef.current !== null &&
+      JSON.stringify(payload) === initialPersistedSnapshotRef.current
+    ) {
+      return;
+    }
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      void saveMapStateToSupabase({
-        floorPlans,
-        activeFloorPlanId,
-        deviceTypeColorOverrides,
-      });
+      void saveMapStateToSupabase(payload);
     }, SUPABASE_SAVE_DEBOUNCE_MS);
 
     return () => {
