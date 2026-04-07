@@ -99,15 +99,16 @@ export function LayerToggle({
             e.stopPropagation();
             onToggleVisibility();
           }}
-          className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${
             isVisible ? "bg-accent" : "bg-border"
           }`}
           title={isVisible ? "Hide layer" : "Show layer"}
-          aria-pressed={isVisible}
+          role="switch"
+          aria-checked={isVisible}
         >
           <span
-            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-              isVisible ? "translate-x-4" : "translate-x-0.5"
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+              isVisible ? "translate-x-[18px]" : "translate-x-[3px]"
             }`}
           />
         </button>

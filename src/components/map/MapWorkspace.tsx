@@ -361,6 +361,11 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         hasCustomFloorPlan={!!floorPlanDataUrl}
         onFloorPlanUpload={uploadFloorPlanFromFile}
         onFloorPlanReset={clearFloorPlan}
+        alternateView={{
+          href: `/topology/${floorId}`,
+          label: "Topology view",
+          icon: "network",
+        }}
       />
 
       <main className="flex-1 ml-0 md:ml-80 h-full transition-all duration-300">

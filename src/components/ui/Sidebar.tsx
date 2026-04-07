@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { PanelLeftClose, PanelLeft, MapPin, LayoutGrid } from "lucide-react";
+import { PanelLeftClose, PanelLeft, MapPin, LayoutGrid, Network } from "lucide-react";
 import { SearchBar } from "./SearchBar";
 import { LayerPanel } from "@/components/layers/LayerPanel";
 import { ExportImport } from "./ExportImport";
@@ -32,6 +32,13 @@ interface SidebarProps {
   hasCustomFloorPlan: boolean;
   onFloorPlanUpload: (file: File) => Promise<void>;
   onFloorPlanReset: () => void;
+  /** Optional link to switch between map and topology (same floor). */
+  alternateView?: {
+    href: string;
+    label: string;
+    /** `map` = floor plan; `network` = topology graph */
+    icon?: "map" | "network";
+  } | null;
 }
 
 export function Sidebar({
@@ -56,8 +63,10 @@ export function Sidebar({
   hasCustomFloorPlan,
   onFloorPlanUpload,
   onFloorPlanReset,
+  alternateView,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const AlternateNavIcon = alternateView?.icon === "map" ? MapPin : Network;
 
   return (
     <>
@@ -111,6 +120,16 @@ export function Sidebar({
               <LayoutGrid className="w-4 h-4 shrink-0 text-accent-light" />
               All floor plans
             </Link>
+
+            {alternateView && (
+              <Link
+                href={alternateView.href}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-bg-card text-sm font-medium text-text-primary hover:bg-bg-hover hover:border-accent/40 transition-colors"
+              >
+                <AlternateNavIcon className="w-4 h-4 shrink-0 text-accent-light" />
+                {alternateView.label}
+              </Link>
+            )}
 
             {/* Search */}
             <SearchBar value={search} onChange={onSearchChange} />

@@ -42,6 +42,8 @@ interface DeviceDetailPanelProps {
   repositionMode?: boolean;
   onEnterRepositionMode?: () => void;
   onExitRepositionMode?: () => void;
+  /** Topology view: narrow graph to this device's neighborhood */
+  onFocusInTopology?: () => void;
 }
 
 function DeviceListItem({ device, onClick }: { device: Device; onClick: () => void }) {
@@ -93,6 +95,7 @@ export function DeviceDetailPanel({
   repositionMode,
   onEnterRepositionMode,
   onExitRepositionMode,
+  onFocusInTopology,
 }: DeviceDetailPanelProps) {
   const showRackStack =
     layerKind === "server" &&
@@ -177,6 +180,19 @@ export function DeviceDetailPanel({
               Move on map (arrow keys)
             </button>
           )}
+        </div>
+      )}
+
+      {onFocusInTopology && (
+        <div className="px-5 py-3 border-b border-border bg-accent/10">
+          <button
+            type="button"
+            onClick={onFocusInTopology}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-accent/40 bg-bg-card text-sm font-medium text-accent-light hover:bg-bg-hover transition-colors"
+          >
+            <Network className="w-4 h-4 shrink-0" />
+            Focus topology on this device
+          </button>
         </div>
       )}
 
@@ -283,6 +299,7 @@ export function DeviceDetailPanel({
             </h3>
             <ServerRackStack
               rackColor={rackColor}
+              // eslint-disable-next-line react/no-children-prop -- ServerRackStack rack units list
               children={children}
               onSelectDevice={onSelectDevice}
               onAddUnit={onAddRackUnit}
