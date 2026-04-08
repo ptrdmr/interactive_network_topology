@@ -25,7 +25,7 @@ export interface Device {
   deviceTypeId: DeviceTypeId;
   position: { x: number; y: number };
   parentId?: string;
-  /** Vertical order inside a server rack (lower = top of stack). */
+  /** Vertical order inside a rack enclosure (lower = top of stack). */
   rackOrder?: number;
   status: DeviceStatus;
   description: string;

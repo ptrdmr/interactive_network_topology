@@ -58,14 +58,14 @@ export function LayerToggle({
         <div className="flex-1 min-w-0">
           <span className="flex items-center gap-1.5 leading-tight truncate">
             <span className="truncate">{layer.name}</span>
-            {layer.kind === "server" && (
+            {layer.kind === "rack" && (
               <span className="shrink-0 text-[9px] uppercase tracking-wide px-1 py-0.5 rounded bg-accent/25 text-accent-light font-semibold">
                 Rack
               </span>
             )}
           </span>
           <span className="block text-xs text-text-muted">
-            {layer.kind === "server" ? `${deviceCount} on map` : `${deviceCount} devices`}
+            {layer.kind === "rack" ? `${deviceCount} on map` : `${deviceCount} devices`}
           </span>
         </div>
       </button>

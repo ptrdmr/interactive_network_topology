@@ -165,7 +165,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         rackOrder: nextOrder,
         status: "online",
         description: "",
-        deviceTypeId: parent.deviceTypeId,
+        deviceTypeId: "rack",
         properties: [],
         portSlots: [],
         tags: [],
@@ -300,7 +300,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
       {selectedDevice && (() => {
         const selLayer = layerById(selectedDevice.layerId);
         const isServerRackRoot =
-          selLayer?.kind === "server" && !selectedDevice.parentId;
+          selLayer?.kind === "rack" && !selectedDevice.parentId;
         const parentDevice = selectedDevice.parentId
           ? deviceById(selectedDevice.parentId)
           : null;

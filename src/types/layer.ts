@@ -1,5 +1,5 @@
-/** Standard map layer vs server rack layer (map dot = enclosure; stack units inside). */
-export type LayerKind = "standard" | "server";
+/** Standard map layer vs rack layer (map dot = enclosure; stack units inside). */
+export type LayerKind = "standard" | "rack";
 
 export interface Layer {
   id: string;

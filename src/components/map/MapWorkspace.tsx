@@ -125,7 +125,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     if (mergeSelectedIds.length < 2) return null;
     const picked = layers.filter((l) => mergeSelectedIds.includes(l.id));
     if (picked.length < 2) return null;
-    const kind = picked.some((l) => l.kind === "server") ? "server" : "standard";
+    const kind = picked.some((l) => l.kind === "rack") ? "rack" : "standard";
     return {
       id: "__merge__",
       name: picked.map((l) => l.name).join(" / "),
@@ -262,12 +262,12 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       setRepositionMode(false);
       const layer = layerById(activeLayerId);
       const id = addDevice({
-        name: layer?.kind === "server" ? "New rack" : "New device",
+        name: layer?.kind === "rack" ? "New rack" : "New device",
         layerId: activeLayerId,
         position,
         status: "online",
         description: "",
-        deviceTypeId: "other",
+        deviceTypeId: layer?.kind === "rack" ? "rack" : "other",
         properties: [],
         portSlots: [],
         tags: [],
@@ -295,7 +295,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         rackOrder: nextOrder,
         status: "online",
         description: "",
-        deviceTypeId: parent.deviceTypeId,
+        deviceTypeId: "rack",
         properties: [],
         portSlots: [],
         tags: [],
@@ -557,6 +557,9 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           open={!!deviceFormId}
           device={deviceFormDevice}
           mode={deviceFormMode}
+          lockDeviceTypeToRack={
+            layerById(deviceFormDevice.layerId)?.kind === "rack"
+          }
           allDevices={allDevicesFlat}
           excludeDeviceId={deviceFormDevice.id}
           onSave={(patch) => {
@@ -575,7 +578,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
 
       {selectedDevice && !deviceFormId && (() => {
         const selLayer = layerById(selectedDevice.layerId);
-        const isServerRackRoot = selLayer?.kind === "server" && !selectedDevice.parentId;
+        const isRackEnclosureRoot =
+          selLayer?.kind === "rack" && !selectedDevice.parentId;
         const parentDevice = selectedDevice.parentId
           ? deviceById(selectedDevice.parentId)
           : null;
@@ -610,10 +614,10 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
               setSelectedDeviceId(null);
             }}
             onAddRackUnit={
-              isServerRackRoot ? () => handleAddRackUnit(selectedDevice) : undefined
+              isRackEnclosureRoot ? () => handleAddRackUnit(selectedDevice) : undefined
             }
             onMoveRackUnit={
-              isServerRackRoot
+              isRackEnclosureRoot
                 ? (childId, direction) =>
                     handleMoveRackUnit(selectedDevice.id, childId, direction)
                 : undefined

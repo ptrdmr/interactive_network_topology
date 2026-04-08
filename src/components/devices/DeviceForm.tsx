@@ -20,6 +20,8 @@ interface DeviceFormProps {
   onSave: (patch: Partial<Device>) => void;
   onDelete?: () => void;
   onClose: () => void;
+  /** Rack-layer devices always use device type Rack; hide the type selector. */
+  lockDeviceTypeToRack?: boolean;
 }
 
 const emptyProperty = (): DeviceProperty => ({ key: "", value: "" });
@@ -69,6 +71,7 @@ export function DeviceForm({
   onSave,
   onDelete,
   onClose,
+  lockDeviceTypeToRack = false,
 }: DeviceFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -89,9 +92,11 @@ export function DeviceForm({
   /** True when the user chose “Other…” or the saved brand isn’t in the current type’s list. */
   const [brandIsCustom, setBrandIsCustom] = useState(false);
 
+  const effectiveTypeId: DeviceTypeId = lockDeviceTypeToRack ? "rack" : deviceTypeId;
+
   const brandOptions = useMemo(
-    () => [...getBrandOptionsForDeviceType(deviceTypeId)],
-    [deviceTypeId]
+    () => [...getBrandOptionsForDeviceType(effectiveTypeId)],
+    [effectiveTypeId]
   );
 
   const brandSelectValue = useMemo(() => {
@@ -122,7 +127,9 @@ export function DeviceForm({
       Array.isArray(slots) && slots.length > 0 ? slots.map((s) => ({ ...s })) : [];
     setPortSlots(list);
     setPortCountDraft(String(list.length));
-    const tid = device.deviceTypeId ?? "other";
+    const tid = lockDeviceTypeToRack
+      ? "rack"
+      : (device.deviceTypeId ?? "other");
     setDeviceTypeId(tid);
     const opts = [...getBrandOptionsForDeviceType(tid)];
     const br = device.brand?.trim() ?? "";
@@ -143,7 +150,7 @@ export function DeviceForm({
     setInstallDate(device.installDate ?? "");
     setTags(device.tags?.length ? [...device.tags] : []);
     setTagInput("");
-  }, [open, device]);
+  }, [open, device, lockDeviceTypeToRack]);
 
   if (!open || !device) return null;
 
@@ -159,7 +166,7 @@ export function DeviceForm({
       name: trimmed,
       description: description.trim(),
       status,
-      deviceTypeId,
+      deviceTypeId: lockDeviceTypeToRack ? "rack" : deviceTypeId,
       brand: brandTrim || undefined,
       ipAddress: ipAddress.trim() || undefined,
       macAddress: macAddress.trim() || undefined,
@@ -276,28 +283,41 @@ export function DeviceForm({
 
           <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Device type</label>
-            <p className="text-[10px] text-text-muted mb-1.5">
-              Fill color on the map. Layer color still shows as the outer ring.
-            </p>
-            <select
-              value={deviceTypeId}
-              onChange={(e) => {
-                const next = e.target.value as DeviceTypeId;
-                setDeviceTypeId(next);
-                const opts = [...getBrandOptionsForDeviceType(next)];
-                const b = brand.trim();
-                if (!b) setBrandIsCustom(false);
-                else if (!opts.includes(b)) setBrandIsCustom(true);
-                else setBrandIsCustom(false);
-              }}
-              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
-            >
-              {DEVICE_TYPE_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {DEVICE_TYPE_LABELS[id]}
-                </option>
-              ))}
-            </select>
+            {lockDeviceTypeToRack ? (
+              <>
+                <div className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary">
+                  {DEVICE_TYPE_LABELS.rack}
+                </div>
+                <p className="text-[10px] text-text-muted mt-1.5">
+                  Rack layers always use this type. Layer color still shows as the outer ring on the map.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-text-muted mb-1.5">
+                  Fill color on the map. Layer color still shows as the outer ring.
+                </p>
+                <select
+                  value={deviceTypeId}
+                  onChange={(e) => {
+                    const next = e.target.value as DeviceTypeId;
+                    setDeviceTypeId(next);
+                    const opts = [...getBrandOptionsForDeviceType(next)];
+                    const b = brand.trim();
+                    if (!b) setBrandIsCustom(false);
+                    else if (!opts.includes(b)) setBrandIsCustom(true);
+                    else setBrandIsCustom(false);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                >
+                  {DEVICE_TYPE_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {DEVICE_TYPE_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
 
           <div>

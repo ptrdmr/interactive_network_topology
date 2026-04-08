@@ -230,7 +230,7 @@ export function ServerRackStack({
       >
         {children.length === 0 ? (
           <p className="text-xs text-text-muted text-center py-6 px-2">
-            No units yet. Add hardware to build the server layout — each unit has its own documentation.
+            No units yet. Add hardware to build the rack layout — each unit has its own documentation.
           </p>
         ) : (
           children.map((unit, index) => (

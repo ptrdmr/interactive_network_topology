@@ -38,7 +38,7 @@ interface DeviceDetailPanelProps {
   onSelectDevice: (device: Device) => void;
   onEdit: () => void;
   onDelete: () => void;
-  /** Server rack layer + map-level enclosure: visual stack + add units */
+  /** Rack layer + map-level enclosure: visual stack + add units */
   onAddRackUnit?: () => void;
   onMoveRackUnit?: (childId: string, direction: -1 | 1) => void;
   /** Map-only devices: arrow-key reposition mode */
@@ -115,7 +115,7 @@ export function DeviceDetailPanel({
   }, [device.id]);
 
   const showRackStack =
-    layerKind === "server" &&
+    layerKind === "rack" &&
     !device.parentId &&
     onAddRackUnit &&
     onMoveRackUnit;
@@ -143,7 +143,7 @@ export function DeviceDetailPanel({
             <span className="text-[10px] text-text-muted/90 px-1.5 py-0.5 rounded bg-bg-card border border-border/50">
               {DEVICE_TYPE_LABELS[device.deviceTypeId]}
             </span>
-            {layerKind === "server" && !device.parentId && (
+            {layerKind === "rack" && !device.parentId && (
               <span className="text-[10px] uppercase tracking-wide text-accent-light font-semibold">
                 Enclosure
               </span>

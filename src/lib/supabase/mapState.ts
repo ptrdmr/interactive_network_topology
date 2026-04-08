@@ -33,10 +33,26 @@ export function emptyPersistedMapState(): PersistedMapState {
 }
 
 function normalizeLayer(raw: Layer): Layer {
+  const k = (raw as { kind?: string }).kind;
+  const kind: Layer["kind"] =
+    k === "rack" || k === "server" ? "rack" : "standard";
   return {
     ...raw,
-    kind: raw.kind === "server" ? "server" : "standard",
+    kind,
   };
+}
+
+/** Normalize devices and force `deviceTypeId: rack` for every device on a rack layer. */
+function normalizeDevicesForFloor(layers: Layer[], rawDevices: unknown): Device[] {
+  if (!Array.isArray(rawDevices)) return [];
+  return (rawDevices as Device[]).map((d) => {
+    const dev = normalizeDevice(d);
+    const layer = layers.find((l) => l.id === dev.layerId);
+    if (layer?.kind === "rack") {
+      return { ...dev, deviceTypeId: "rack" };
+    }
+    return dev;
+  });
 }
 
 function normalizePortSlot(raw: unknown): PortSlot {
@@ -120,9 +136,7 @@ function normalizeFloorPlanDocument(raw: unknown): FloorPlanDocument | null {
   const layers = Array.isArray(o.layers)
     ? (o.layers as Layer[]).map((l) => normalizeLayer(l))
     : [];
-  const devices = Array.isArray(o.devices)
-    ? (o.devices as Device[]).map((d) => normalizeDevice(d))
-    : [];
+  const devices = normalizeDevicesForFloor(layers, o.devices);
   return {
     id: o.id,
     name: o.name,
@@ -152,7 +166,10 @@ function migrateLegacyV1(o: Record<string, unknown>): PersistedMapState {
         floorPlanDataUrl:
           typeof o.floorPlanDataUrl === "string" ? o.floorPlanDataUrl : null,
         layers: (o.layers as Layer[]).map((l) => normalizeLayer(l)),
-        devices: (o.devices as Device[]).map((d) => normalizeDevice(d)),
+        devices: normalizeDevicesForFloor(
+          (o.layers as Layer[]).map((l) => normalizeLayer(l)),
+          o.devices
+        ),
       },
     ],
     activeFloorPlanId: id,

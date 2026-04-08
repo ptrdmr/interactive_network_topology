@@ -71,7 +71,7 @@ export function LayerForm({
       setColor(src.color);
       setDescription(src.description);
       setVisible(src.visible);
-      setKind(src.kind === "server" ? "server" : "standard");
+      setKind(src.kind === "rack" ? "rack" : "standard");
     } else {
       setName(DEFAULTS.name);
       setIcon(DEFAULTS.icon);
@@ -162,16 +162,16 @@ export function LayerForm({
               <button
                 type="button"
                 onClick={() => {
-                  setKind("server");
+                  setKind("rack");
                   if (!initial && icon === "Layers") setIcon("Server");
                 }}
                 className={`px-3 py-2 rounded-lg border text-sm text-left transition-colors ${
-                  kind === "server"
+                  kind === "rack"
                     ? "border-accent bg-accent/15 text-text-primary"
                     : "border-border bg-bg-card text-text-muted hover:bg-bg-hover"
                 }`}
               >
-                <span className="block font-medium">Server rack</span>
+                <span className="block font-medium">Rack</span>
                 <span className="block text-[10px] text-text-muted mt-0.5">Map = enclosure; stack units inside</span>
               </button>
             </div>
