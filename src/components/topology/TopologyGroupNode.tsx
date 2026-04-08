@@ -1,8 +1,9 @@
 "use client";
 
-import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 import { Layers } from "lucide-react";
 import type { TopologyGroupNodeData } from "@/lib/topology/types";
+import { TopologyNodeHandles } from "./TopologyNodeHandles";
 
 type GroupNode = Node<TopologyGroupNodeData, "topologyGroup">;
 
@@ -19,16 +20,7 @@ export function TopologyGroupNode({ data, selected }: NodeProps<GroupNode>) {
         borderColor: selected ? undefined : data.layerColor,
       }}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!size-2 !border-border !bg-bg-secondary"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!size-2 !border-border !bg-bg-secondary"
-      />
+      <TopologyNodeHandles />
 
       <div className="flex items-start gap-3">
         <div

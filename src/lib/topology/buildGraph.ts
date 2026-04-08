@@ -86,15 +86,13 @@ export function buildGraph(
 
   const edges: Edge<TopologyEdgeData>[] = [];
 
-  // Port links – merge both sides into one edge: "deviceA: portA ↔ deviceB: portB"
+  // Port links – merge both sides into one edge: "portA ↔ portB" (no device names; nodes show that)
   if (includePort) {
     type PortPair = {
       a: string;
       b: string;
       aPort: string | null;
-      aDeviceName: string | null;
       bPort: string | null;
-      bDeviceName: string | null;
     };
     const portPairs = new Map<string, PortPair>();
 
@@ -113,29 +111,24 @@ export function buildGraph(
 
         let pair = portPairs.get(key);
         if (!pair) {
-          pair = { a, b, aPort: null, aDeviceName: null, bPort: null, bDeviceName: null };
+          pair = { a, b, aPort: null, bPort: null };
           portPairs.set(key, pair);
         }
 
         if (d.id === a) {
           pair.aPort = pair.aPort ?? localPort;
-          pair.aDeviceName = pair.aDeviceName ?? d.name;
         } else {
           pair.bPort = pair.bPort ?? localPort;
-          pair.bDeviceName = pair.bDeviceName ?? d.name;
         }
       }
     }
 
-    for (const { a, b, aPort, aDeviceName, bPort, bDeviceName } of portPairs.values()) {
-      const aLabel = aPort && aDeviceName ? `${aDeviceName}: ${aPort}` : aPort;
-      const bLabel = bPort && bDeviceName ? `${bDeviceName}: ${bPort}` : bPort;
-
+    for (const { a, b, aPort, bPort } of portPairs.values()) {
       let label: string;
-      if (aLabel && bLabel) {
-        label = `${aLabel} ↔ ${bLabel}`;
+      if (aPort && bPort) {
+        label = `${aPort} ↔ ${bPort}`;
       } else {
-        label = aLabel ?? bLabel ?? "Port link";
+        label = aPort ?? bPort ?? "Port link";
       }
 
       edges.push({

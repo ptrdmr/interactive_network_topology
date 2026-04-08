@@ -1,8 +1,9 @@
 "use client";
 
-import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 import { Circle } from "lucide-react";
 import type { TopologyNodeData } from "@/lib/topology/types";
+import { TopologyNodeHandles } from "./TopologyNodeHandles";
 
 type TopoNode = Node<TopologyNodeData, "topologyDevice">;
 
@@ -35,16 +36,7 @@ export function TopologyDeviceNode({ data, selected }: NodeProps<TopoNode>) {
         opacity: fade,
       }}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!size-2 !border-border !bg-bg-secondary"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!size-2 !border-border !bg-bg-secondary"
-      />
+      <TopologyNodeHandles />
 
       <div className="flex items-start gap-2">
         <div

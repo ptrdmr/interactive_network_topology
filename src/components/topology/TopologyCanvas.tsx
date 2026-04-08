@@ -31,6 +31,7 @@ import {
   filterDevicesForTopology,
 } from "@/lib/topology/buildGraph";
 import { collapseLayerGroups } from "@/lib/topology/collapseGroups";
+import { applyNearestHandles } from "@/lib/topology/edgeHandles";
 import { filterDevicesForFocus } from "@/lib/topology/focusSubgraph";
 import { layoutGraph, type LayoutDirection } from "@/lib/topology/layoutGraph";
 import type {
@@ -282,6 +283,11 @@ function TopologyCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
 
+  const edgesWithHandles = useMemo(
+    () => applyNearestHandles(nodes, edges),
+    [nodes, edges]
+  );
+
   const selectedIdRef = useRef(selectedDeviceId);
 
   useEffect(() => {
@@ -346,7 +352,7 @@ function TopologyCanvasInner({
     <div className="relative h-full w-full blueprint-grid bg-bg-primary">
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edgesWithHandles}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
