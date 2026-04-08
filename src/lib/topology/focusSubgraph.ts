@@ -1,6 +1,6 @@
 import type { Device } from "@/types/device";
 
-/** Build undirected adjacency from port links, rack hierarchy, and property refs. */
+/** Build undirected adjacency from port links and property refs. */
 export function buildAdjacencyMap(devices: Device[]): Map<string, Set<string>> {
   const ids = new Set(devices.map((d) => d.id));
   const adj = new Map<string, Set<string>>();
@@ -19,8 +19,6 @@ export function buildAdjacencyMap(devices: Device[]): Map<string, Set<string>> {
       const t = slot.connectedDeviceId;
       if (t) addEdge(d.id, t);
     }
-    const pid = d.parentId;
-    if (pid) addEdge(d.id, pid);
     for (const p of d.properties) {
       const raw = p.value.trim();
       if (raw && raw !== d.id && ids.has(raw)) {

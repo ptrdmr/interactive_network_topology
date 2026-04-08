@@ -19,7 +19,6 @@ import type { LayoutDirection } from "@/lib/topology/layoutGraph";
 
 export type EdgeKindToggles = {
   port: boolean;
-  rack: boolean;
   property: boolean;
 };
 
@@ -213,17 +212,6 @@ export function TopologyControls({
                 }
               />
               <span>Port links (solid)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="rounded border-border"
-                checked={edgeToggles.rack}
-                onChange={(e) =>
-                  onEdgeTogglesChange({ ...edgeToggles, rack: e.target.checked })
-                }
-              />
-              <span>Rack hierarchy (dashed)</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input

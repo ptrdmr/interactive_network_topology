@@ -9,7 +9,7 @@ export const TOPOLOGY_NODE_HEIGHT = 76;
 export const TOPOLOGY_GROUP_WIDTH = 220;
 export const TOPOLOGY_GROUP_HEIGHT = 88;
 
-export type TopologyEdgeKind = "port" | "rack" | "property";
+export type TopologyEdgeKind = "port" | "property";
 
 export type TopologyNodeData = {
   deviceId: string;
@@ -43,8 +43,6 @@ export type TopologyEdgeData = {
 export type BuildGraphOptions = {
   /** Include port-based links (solid). Default true. */
   includePort?: boolean;
-  /** Include rack parent → child links (dashed). Default true. */
-  includeRack?: boolean;
   /** Include property-reference links (dotted). Default true. */
   includeProperty?: boolean;
 };

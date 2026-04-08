@@ -10,6 +10,7 @@ import type { FocusHopMode } from "./TopologyControls";
 import { DeviceDetailPanel } from "@/components/devices/DeviceDetailPanel";
 import { useAppState } from "@/hooks/useAppState";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { filterDevicesForTopology } from "@/lib/topology/buildGraph";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
 
@@ -92,13 +93,25 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
     floorPlans.some((fp) => fp.id === floorId) &&
     activeFloorPlanId === floorId;
 
+  const topologyEligibleDevices = useMemo(
+    () => filterDevicesForTopology(devices, layers),
+    [devices, layers]
+  );
+
   const deviceOptions = useMemo(
     () =>
-      [...devices]
+      [...topologyEligibleDevices]
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((d) => ({ id: d.id, name: d.name })),
-    [devices]
+    [topologyEligibleDevices]
   );
+
+  useEffect(() => {
+    if (!focusDeviceId) return;
+    if (!topologyEligibleDevices.some((d) => d.id === focusDeviceId)) {
+      setFocusDeviceId(null);
+    }
+  }, [focusDeviceId, topologyEligibleDevices]);
 
   const selectedDevice = selectedDeviceId
     ? deviceById(selectedDeviceId) ?? null

@@ -62,27 +62,6 @@ function styleEdges(edges: Edge<TopologyEdgeData>[]): Edge<TopologyEdgeData>[] {
       };
     }
 
-    if (kind === "rack") {
-      return {
-        ...e,
-        label,
-        style: {
-          stroke: "#94a3b8",
-          strokeWidth: 2,
-          strokeDasharray: "6 4",
-        },
-        labelStyle: { fill: "#cbd5e1", fontSize: 10 },
-        labelBgStyle: { fill: "#1a2332", fillOpacity: 0.92 },
-        labelBgPadding: [4, 4] as [number, number],
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: "#94a3b8",
-          width: 18,
-          height: 18,
-        },
-      };
-    }
-
     return {
       ...e,
       label,
@@ -150,7 +129,6 @@ function FitViewOnResize({ nodeCount }: { nodeCount: number }) {
 
 const defaultEdgeToggles: EdgeKindToggles = {
   port: true,
-  rack: true,
   property: true,
 };
 
@@ -225,8 +203,12 @@ function TopologyCanvasInner({
         focusDeviceId,
         focusMaxHops
       );
-      pool = devices;
-      hopDist = distances;
+      pool = filterDevicesForTopology(devices, layers);
+      hopDist = new Map<string, number>();
+      for (const d of pool) {
+        const dist = distances.get(d.id);
+        if (dist !== undefined) hopDist.set(d.id, dist);
+      }
     } else {
       pool = filterDevicesForTopology(floorDevices, layers);
     }
@@ -239,7 +221,6 @@ function TopologyCanvasInner({
     const ctx = buildDeviceContextList(pool, layers, resolveDeviceTypeColor);
     const built = buildGraph(ctx, {
       includePort: edgeToggles.port,
-      includeRack: edgeToggles.rack,
       includeProperty: edgeToggles.property,
     });
     let { nodes } = built;
@@ -270,7 +251,6 @@ function TopologyCanvasInner({
     resolveDeviceTypeColor,
     direction,
     edgeToggles.port,
-    edgeToggles.rack,
     edgeToggles.property,
     focusDeviceId,
     focusMaxHops,

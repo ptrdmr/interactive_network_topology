@@ -21,12 +21,14 @@ function layerMeta(
   };
 }
 
-/** Devices on visible layers only; includes rack children. */
+/** Devices on visible layers only. Rack enclosures are excluded (floor-plan container only); rack-mounted gear is included. */
 export function filterDevicesForTopology(devices: Device[], layers: Layer[]): Device[] {
   const visible = new Set(
     layers.filter((l) => l.visible).map((l) => l.id)
   );
-  return devices.filter((d) => visible.has(d.layerId));
+  return devices.filter(
+    (d) => visible.has(d.layerId) && d.deviceTypeId !== "rack"
+  );
 }
 
 export function buildDeviceContextList(
@@ -55,7 +57,6 @@ export function buildGraph(
   options: BuildGraphOptions = {}
 ): { nodes: Node<TopologyNodeData>[]; edges: Edge<TopologyEdgeData>[] } {
   const includePort = options.includePort !== false;
-  const includeRack = options.includeRack !== false;
   const includeProperty = options.includeProperty !== false;
 
   const idSet = new Set(contextList.map((c) => c.device.id));
@@ -137,25 +138,6 @@ export function buildGraph(
         target: b,
         type: "smoothstep",
         data: { kind: "port", label },
-      });
-    }
-  }
-
-  // Rack hierarchy: parent → child
-  if (includeRack) {
-    for (const c of contextList) {
-      const d = c.device;
-      const pid = d.parentId;
-      if (!pid || !idSet.has(pid)) continue;
-      edges.push({
-        id: `rack-${pid}-${d.id}`,
-        source: pid,
-        target: d.id,
-        type: "smoothstep",
-        data: {
-          kind: "rack",
-          label: d.rackOrder != null ? `Rack unit ${d.rackOrder}` : "Rack unit",
-        },
       });
     }
   }
