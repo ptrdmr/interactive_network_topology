@@ -165,7 +165,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         rackOrder: nextOrder,
         status: "online",
         description: "",
-        deviceTypeId: "rack",
+        deviceTypeId: "other",
         properties: [],
         portSlots: [],
         tags: [],

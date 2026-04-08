@@ -20,7 +20,7 @@ interface DeviceFormProps {
   onSave: (patch: Partial<Device>) => void;
   onDelete?: () => void;
   onClose: () => void;
-  /** Rack-layer devices always use device type Rack; hide the type selector. */
+  /** Rack **enclosure** only (root on a rack layer, no parent): type is always Rack. */
   lockDeviceTypeToRack?: boolean;
 }
 

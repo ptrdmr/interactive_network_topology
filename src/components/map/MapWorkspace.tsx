@@ -295,7 +295,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         rackOrder: nextOrder,
         status: "online",
         description: "",
-        deviceTypeId: "rack",
+        deviceTypeId: "other",
         properties: [],
         portSlots: [],
         tags: [],
@@ -558,7 +558,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           device={deviceFormDevice}
           mode={deviceFormMode}
           lockDeviceTypeToRack={
-            layerById(deviceFormDevice.layerId)?.kind === "rack"
+            layerById(deviceFormDevice.layerId)?.kind === "rack" &&
+            !deviceFormDevice.parentId
           }
           allDevices={allDevicesFlat}
           excludeDeviceId={deviceFormDevice.id}
