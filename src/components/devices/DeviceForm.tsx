@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { X, Trash2, Plus, Minus } from "lucide-react";
 import type { Device, DeviceProperty, DeviceStatus, PortSlot } from "@/types/device";
+import type { Layer } from "@/types/layer";
 import {
   DEVICE_TYPE_IDS,
   DEVICE_TYPE_LABELS,
@@ -16,6 +17,8 @@ interface DeviceFormProps {
   mode: "create" | "edit";
   /** For “Connected device” port dropdown; excludes the device being edited. */
   allDevices: Device[];
+  /** Layers on the current floor (for assigning logical layer). */
+  layers: Layer[];
   excludeDeviceId: string;
   onSave: (patch: Partial<Device>) => void;
   onDelete?: () => void;
@@ -67,6 +70,7 @@ export function DeviceForm({
   device,
   mode,
   allDevices,
+  layers,
   excludeDeviceId,
   onSave,
   onDelete,
@@ -91,6 +95,7 @@ export function DeviceForm({
   const [tagInput, setTagInput] = useState("");
   /** True when the user chose “Other…” or the saved brand isn’t in the current type’s list. */
   const [brandIsCustom, setBrandIsCustom] = useState(false);
+  const [layerId, setLayerId] = useState("");
 
   const effectiveTypeId: DeviceTypeId = lockDeviceTypeToRack ? "rack" : deviceTypeId;
 
@@ -150,6 +155,7 @@ export function DeviceForm({
     setInstallDate(device.installDate ?? "");
     setTags(device.tags?.length ? [...device.tags] : []);
     setTagInput("");
+    setLayerId(device.layerId);
   }, [open, device, lockDeviceTypeToRack]);
 
   if (!open || !device) return null;
@@ -164,6 +170,7 @@ export function DeviceForm({
     const brandTrim = brand.trim();
     onSave({
       name: trimmed,
+      layerId,
       description: description.trim(),
       status,
       deviceTypeId: lockDeviceTypeToRack ? "rack" : deviceTypeId,
@@ -269,6 +276,24 @@ export function DeviceForm({
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">Layer</label>
+            <select
+              value={layerId}
+              onChange={(e) => setLayerId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              {layers.some((l) => l.id === layerId) ? null : (
+                <option value={layerId}>Unknown layer</option>
+              )}
+              {layers.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Status</label>
             <select
               value={status}
@@ -289,7 +314,7 @@ export function DeviceForm({
                   {DEVICE_TYPE_LABELS.rack}
                 </div>
                 <p className="text-[10px] text-text-muted mt-1.5">
-                  Rack layers always use this type. Layer color still shows as the outer ring on the map.
+                  Rack enclosures always use this type. Layer color still shows as the outer ring on the map.
                 </p>
               </>
             ) : (

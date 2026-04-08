@@ -16,15 +16,15 @@ import {
 } from "lucide-react";
 import type { Device } from "@/types/device";
 import { DEVICE_TYPE_LABELS } from "@/constants/deviceTypes";
-import type { LayerKind } from "@/types/layer";
 import { Badge } from "@/components/ui/Badge";
 import { ServerRackStack } from "./ServerRackStack";
 
 interface DeviceDetailPanelProps {
   device: Device;
   layerName: string;
-  layerKind: LayerKind;
   rackColor: string;
+  /** Per-unit layer name/color for rack stack rows (units may differ from enclosure). */
+  resolveLayerMeta: (layerId: string) => { name: string; color: string };
   /** Map marker fill colors for device types (rack unit accent + hover preview). */
   resolveDeviceTypeColor: (typeId: Device["deviceTypeId"]) => string;
   children: Device[];
@@ -88,8 +88,8 @@ function DeviceListItem({ device, onClick }: { device: Device; onClick: () => vo
 export function DeviceDetailPanel({
   device,
   layerName,
-  layerKind,
   rackColor,
+  resolveLayerMeta,
   resolveDeviceTypeColor,
   children,
   connectedDevices,
@@ -115,7 +115,7 @@ export function DeviceDetailPanel({
   }, [device.id]);
 
   const showRackStack =
-    layerKind === "rack" &&
+    device.deviceTypeId === "rack" &&
     !device.parentId &&
     onAddRackUnit &&
     onMoveRackUnit;
@@ -143,7 +143,7 @@ export function DeviceDetailPanel({
             <span className="text-[10px] text-text-muted/90 px-1.5 py-0.5 rounded bg-bg-card border border-border/50">
               {DEVICE_TYPE_LABELS[device.deviceTypeId]}
             </span>
-            {layerKind === "rack" && !device.parentId && (
+            {device.deviceTypeId === "rack" && !device.parentId && (
               <span className="text-[10px] uppercase tracking-wide text-accent-light font-semibold">
                 Enclosure
               </span>
@@ -402,7 +402,7 @@ export function DeviceDetailPanel({
             </h3>
             <ServerRackStack
               rackColor={rackColor}
-              layerName={layerName}
+              resolveLayerMeta={resolveLayerMeta}
               resolveDeviceTypeColor={resolveDeviceTypeColor}
               // eslint-disable-next-line react/no-children-prop -- ServerRackStack rack units list
               children={children}

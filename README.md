@@ -8,7 +8,7 @@ Concourse is a blueprint-style network topology canvas: drop devices on a real f
 
 - **Layers that mean something** — Group access points, drops, racks, or anything else; color-code them and write layer-level context.
 - **Click to place, click to learn** — Pick an active layer, click the map, fill in the story. No spreadsheet required.
-- **Server rack mode** — Mark a layer as a rack layer: one dot on the map is an enclosure; stack units inside with a visual rack layout and per-unit docs.
+- **Server rack mode** — Set a device type to **Rack** to make it an enclosure; stack units inside with a visual rack layout and per-unit docs.
 - **Reposition with precision** — Arrow keys nudge markers (Shift for bigger steps) when you’re fine-tuning layout.
 - **Your data stays yours** — By default everything persists in the browser (`localStorage`). Optionally **sync one shared map to Supabase** so everyone sees the same layers/devices (see below). Export or import JSON anytime.
 

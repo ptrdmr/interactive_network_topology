@@ -3,7 +3,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import * as LucideIcons from "lucide-react";
 import { X, Trash2 } from "lucide-react";
-import type { Layer, LayerKind } from "@/types/layer";
+import type { Layer } from "@/types/layer";
 
 const ICON_OPTIONS = [
   "Layers",
@@ -29,7 +29,6 @@ const DEFAULTS: Omit<Layer, "id"> = {
   color: "#3b82f6",
   description: "",
   visible: true,
-  kind: "standard",
 };
 
 interface LayerFormProps {
@@ -60,7 +59,6 @@ export function LayerForm({
   const [color, setColor] = useState(DEFAULTS.color);
   const [description, setDescription] = useState("");
   const [visible, setVisible] = useState(true);
-  const [kind, setKind] = useState<LayerKind>("standard");
 
   useEffect(() => {
     if (!open) return;
@@ -71,14 +69,12 @@ export function LayerForm({
       setColor(src.color);
       setDescription(src.description);
       setVisible(src.visible);
-      setKind(src.kind === "rack" ? "rack" : "standard");
     } else {
       setName(DEFAULTS.name);
       setIcon(DEFAULTS.icon);
       setColor(DEFAULTS.color);
       setDescription(DEFAULTS.description);
       setVisible(DEFAULTS.visible);
-      setKind("standard");
     }
   }, [open, initial, mode]);
 
@@ -94,7 +90,6 @@ export function LayerForm({
       color,
       description: description.trim(),
       visible,
-      kind,
     });
     onClose();
   };
@@ -144,38 +139,6 @@ export function LayerForm({
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {topSlot}
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1.5">Layer type</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setKind("standard")}
-                className={`px-3 py-2 rounded-lg border text-sm text-left transition-colors ${
-                  kind === "standard"
-                    ? "border-accent bg-accent/15 text-text-primary"
-                    : "border-border bg-bg-card text-text-muted hover:bg-bg-hover"
-                }`}
-              >
-                <span className="block font-medium">Standard</span>
-                <span className="block text-[10px] text-text-muted mt-0.5">One device per map click</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setKind("rack");
-                  if (!initial && icon === "Layers") setIcon("Server");
-                }}
-                className={`px-3 py-2 rounded-lg border text-sm text-left transition-colors ${
-                  kind === "rack"
-                    ? "border-accent bg-accent/15 text-text-primary"
-                    : "border-border bg-bg-card text-text-muted hover:bg-bg-hover"
-                }`}
-              >
-                <span className="block font-medium">Rack</span>
-                <span className="block text-[10px] text-text-muted mt-0.5">Map = enclosure; stack units inside</span>
-              </button>
-            </div>
-          </div>
 
           <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Name</label>

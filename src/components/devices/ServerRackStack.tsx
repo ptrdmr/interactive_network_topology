@@ -24,8 +24,8 @@ function viewportHeight(): number {
 
 interface ServerRackStackProps {
   rackColor: string;
-  /** Layer name for hovered-unit preview (same for all units in this rack). */
-  layerName: string;
+  /** Per-unit layer name/color (units may differ from the enclosure layer). */
+  resolveLayerMeta: (layerId: string) => { name: string; color: string };
   resolveDeviceTypeColor: (typeId: Device["deviceTypeId"]) => string;
   children: Device[];
   onSelectDevice: (device: Device) => void;
@@ -37,7 +37,7 @@ type PopoverPos = { top: number; left: number; maxWidth: number };
 
 export function ServerRackStack({
   rackColor,
-  layerName,
+  resolveLayerMeta,
   resolveDeviceTypeColor,
   children,
   onSelectDevice,
@@ -126,7 +126,7 @@ export function ServerRackStack({
     if (hoveredUnitId && popoverPos) {
       updatePopoverPosition(hoveredUnitId);
     }
-  }, [hoveredUnitId, popoverPos, layerName, childrenSig, updatePopoverPosition]);
+  }, [hoveredUnitId, popoverPos, childrenSig, updatePopoverPosition]);
 
   useEffect(() => {
     const onResize = () => {
@@ -198,7 +198,10 @@ export function ServerRackStack({
         onMouseEnter={cancelHoverClear}
         onMouseLeave={scheduleHoverClear}
       >
-        <DeviceMapDockPanel device={hoveredUnit} layerName={layerName} />
+        <DeviceMapDockPanel
+          device={hoveredUnit}
+          layerName={resolveLayerMeta(hoveredUnit.layerId).name}
+        />
       </div>,
       document.body
     );
@@ -233,7 +236,9 @@ export function ServerRackStack({
             No units yet. Add hardware to build the rack layout — each unit has its own documentation.
           </p>
         ) : (
-          children.map((unit, index) => (
+          children.map((unit, index) => {
+            const unitLayer = resolveLayerMeta(unit.layerId);
+            return (
             <div
               key={unit.id}
               ref={(el) => {
@@ -241,7 +246,12 @@ export function ServerRackStack({
                 else rowRefs.current.delete(unit.id);
               }}
               className="group flex items-stretch gap-1 rounded-lg border border-border/60 bg-bg-card/90 hover:border-accent/40 transition-colors overflow-hidden"
-              style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}
+              style={{
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                borderLeftWidth: 3,
+                borderLeftColor: unitLayer.color,
+              }}
+              title={unitLayer.name}
               onMouseEnter={() => handleRowHover(unit.id)}
               onMouseLeave={() => handleRowHover(null)}
             >
@@ -303,7 +313,8 @@ export function ServerRackStack({
                 </div>
               </button>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

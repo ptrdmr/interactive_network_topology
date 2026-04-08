@@ -33,33 +33,14 @@ export function emptyPersistedMapState(): PersistedMapState {
 }
 
 function normalizeLayer(raw: Layer): Layer {
-  const k = (raw as { kind?: string }).kind;
-  const kind: Layer["kind"] =
-    k === "rack" || k === "server" ? "rack" : "standard";
-  return {
-    ...raw,
-    kind,
-  };
+  const { kind: _removed, ...rest } = raw as Layer & { kind?: string };
+  return rest;
 }
 
-/**
- * Normalize devices on a floor. Rack **enclosure** roots (no parent) on a rack layer
- * always use `deviceTypeId: rack`. Stack units keep their own type; any unit still
- * marked `rack` from an older save is reset to `other`.
- */
-function normalizeDevicesForFloor(layers: Layer[], rawDevices: unknown): Device[] {
+/** Normalize devices on a floor (tags, ports, device types). */
+function normalizeDevicesForFloor(_layers: Layer[], rawDevices: unknown): Device[] {
   if (!Array.isArray(rawDevices)) return [];
-  return (rawDevices as Device[]).map((d) => {
-    const dev = normalizeDevice(d);
-    const layer = layers.find((l) => l.id === dev.layerId);
-    if (layer?.kind === "rack" && !dev.parentId) {
-      return { ...dev, deviceTypeId: "rack" };
-    }
-    if (layer?.kind === "rack" && dev.parentId && dev.deviceTypeId === "rack") {
-      return { ...dev, deviceTypeId: "other" };
-    }
-    return dev;
-  });
+  return (rawDevices as Device[]).map((d) => normalizeDevice(d));
 }
 
 function normalizePortSlot(raw: unknown): PortSlot {

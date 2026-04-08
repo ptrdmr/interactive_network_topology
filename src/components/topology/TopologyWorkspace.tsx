@@ -120,6 +120,14 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
     setSelectedDeviceId(null);
   }, []);
 
+  const resolveLayerMeta = useCallback(
+    (id: string) => {
+      const l = layerById(id);
+      return { name: l?.name ?? "Unknown layer", color: l?.color ?? "#64748b" };
+    },
+    [layerById]
+  );
+
   const openLayerCreate = useCallback(() => {
     setLayerFormLayer(null);
     setLayerFormOpen(true);
@@ -300,7 +308,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
       {selectedDevice && (() => {
         const selLayer = layerById(selectedDevice.layerId);
         const isServerRackRoot =
-          selLayer?.kind === "rack" && !selectedDevice.parentId;
+          selectedDevice.deviceTypeId === "rack" && !selectedDevice.parentId;
         const parentDevice = selectedDevice.parentId
           ? deviceById(selectedDevice.parentId)
           : null;
@@ -308,8 +316,8 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
           <DeviceDetailPanel
             device={selectedDevice}
             layerName={selLayer?.name ?? "Unknown layer"}
-            layerKind={selLayer?.kind ?? "standard"}
             rackColor={selLayer?.color ?? "#64748b"}
+            resolveLayerMeta={resolveLayerMeta}
             resolveDeviceTypeColor={resolveDeviceTypeColor}
             // eslint-disable-next-line react/no-children-prop -- matches DeviceDetailPanel rack-units prop name
             children={childrenOf(selectedDevice.id)}

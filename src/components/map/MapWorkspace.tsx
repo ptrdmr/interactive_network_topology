@@ -125,7 +125,6 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     if (mergeSelectedIds.length < 2) return null;
     const picked = layers.filter((l) => mergeSelectedIds.includes(l.id));
     if (picked.length < 2) return null;
-    const kind = picked.some((l) => l.kind === "rack") ? "rack" : "standard";
     return {
       id: "__merge__",
       name: picked.map((l) => l.name).join(" / "),
@@ -133,7 +132,6 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       color: picked[0].color,
       description: "",
       visible: true,
-      kind,
     };
   }, [layers, mergeSelectedIds]);
 
@@ -166,6 +164,14 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     setRepositionMode(false);
     setSelectedDeviceId(null);
   }, []);
+
+  const resolveLayerMeta = useCallback(
+    (id: string) => {
+      const l = layerById(id);
+      return { name: l?.name ?? "Unknown layer", color: l?.color ?? "#64748b" };
+    },
+    [layerById]
+  );
 
   const handleEnterRepositionMode = useCallback(() => {
     setActiveLayerId(null);
@@ -260,14 +266,13 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     (position: { x: number; y: number }) => {
       if (!activeLayerId) return;
       setRepositionMode(false);
-      const layer = layerById(activeLayerId);
       const id = addDevice({
-        name: layer?.kind === "rack" ? "New rack" : "New device",
+        name: "New device",
         layerId: activeLayerId,
         position,
         status: "online",
         description: "",
-        deviceTypeId: layer?.kind === "rack" ? "rack" : "other",
+        deviceTypeId: "other",
         properties: [],
         portSlots: [],
         tags: [],
@@ -276,7 +281,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       setDeviceFormMode("create");
       setDeviceFormId(id);
     },
-    [activeLayerId, addDevice, layerById]
+    [activeLayerId, addDevice]
   );
 
   const handleAddRackUnit = useCallback(
@@ -289,7 +294,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           : Math.max(...siblings.map((c) => c.rackOrder ?? 0), 0) + 1;
       const id = addDevice({
         name: "New unit",
-        layerId: parent.layerId,
+        layerId: activeLayerId ?? parent.layerId,
         parentId: parent.id,
         position: { ...parent.position },
         rackOrder: nextOrder,
@@ -304,7 +309,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       setDeviceFormMode("create");
       setDeviceFormId(id);
     },
-    [addDevice, devices]
+    [activeLayerId, addDevice, devices]
   );
 
   const handleMoveRackUnit = useCallback(
@@ -558,10 +563,10 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           device={deviceFormDevice}
           mode={deviceFormMode}
           lockDeviceTypeToRack={
-            layerById(deviceFormDevice.layerId)?.kind === "rack" &&
-            !deviceFormDevice.parentId
+            deviceFormDevice.deviceTypeId === "rack" && !deviceFormDevice.parentId
           }
           allDevices={allDevicesFlat}
+          layers={layers}
           excludeDeviceId={deviceFormDevice.id}
           onSave={(patch) => {
             updateDevice(deviceFormDevice.id, patch);
@@ -580,7 +585,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       {selectedDevice && !deviceFormId && (() => {
         const selLayer = layerById(selectedDevice.layerId);
         const isRackEnclosureRoot =
-          selLayer?.kind === "rack" && !selectedDevice.parentId;
+          selectedDevice.deviceTypeId === "rack" && !selectedDevice.parentId;
         const parentDevice = selectedDevice.parentId
           ? deviceById(selectedDevice.parentId)
           : null;
@@ -588,8 +593,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           <DeviceDetailPanel
             device={selectedDevice}
             layerName={selLayer?.name ?? "Unknown layer"}
-            layerKind={selLayer?.kind ?? "standard"}
             rackColor={selLayer?.color ?? "#64748b"}
+            resolveLayerMeta={resolveLayerMeta}
             resolveDeviceTypeColor={resolveDeviceTypeColor}
             children={childrenOf(selectedDevice.id)}
             connectedDevices={connectedTo(selectedDevice.id)}

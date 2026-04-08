@@ -242,9 +242,7 @@ function useAppStateImpl() {
   const deviceCountByLayer = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const l of layers) {
-      counts[l.id] = devices.filter(
-        (d) => d.layerId === l.id && !d.parentId
-      ).length;
+      counts[l.id] = devices.filter((d) => d.layerId === l.id).length;
     }
     return counts;
   }, [devices, layers]);
