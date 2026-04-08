@@ -19,6 +19,11 @@ function formatProperties(props: DeviceProperty[]): string {
     .join("; ");
 }
 
+function formatTags(tags: string[] | undefined): string {
+  if (!tags?.length) return "";
+  return tags.join("; ");
+}
+
 function formatPorts(device: Device, nameById: Map<string, string>): string {
   const slots = device.portSlots ?? [];
   if (slots.length === 0) return "";
@@ -58,6 +63,7 @@ const HEADERS = [
   "map_x",
   "map_y",
   "properties",
+  "tags",
   "ports_summary",
 ] as const;
 
@@ -93,6 +99,7 @@ export function buildDeviceInventoryCsv(floors: FloorPlanDocument[]): string {
         String(d.position?.x ?? ""),
         String(d.position?.y ?? ""),
         formatProperties(d.properties),
+        formatTags(d.tags),
         formatPorts(d, nameById),
       ];
       lines.push(row.map((c) => csvEscapeCell(c)).join(","));

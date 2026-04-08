@@ -41,4 +41,6 @@ export interface Device {
   properties: DeviceProperty[];
   /** Port count = length; each slot holds optional label, notes, and link to another device. */
   portSlots?: PortSlot[];
+  /** Free-form labels for filtering and search (normalized when saved). */
+  tags: string[];
 }

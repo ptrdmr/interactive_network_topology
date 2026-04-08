@@ -149,6 +149,18 @@ export function DeviceDetailPanel({
               </span>
             )}
           </div>
+          {(device.tags?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {(device.tags ?? []).map((t) => (
+                <span
+                  key={t}
+                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-bg-card border border-border/60 text-text-muted"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button

@@ -64,6 +64,22 @@ function normalizeInstallDate(raw: unknown): string | undefined {
   return t;
 }
 
+function normalizeTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const t = item.trim();
+    if (!t) continue;
+    const key = t.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
 function normalizeDevice(raw: Device): Device {
   const portSlots = Array.isArray((raw as { portSlots?: unknown }).portSlots)
     ? (raw as { portSlots: unknown[] }).portSlots.map(normalizePortSlot)
@@ -71,9 +87,11 @@ function normalizeDevice(raw: Device): Device {
   const deviceTypeId = normalizeDeviceTypeId(
     (raw as { deviceTypeId?: unknown }).deviceTypeId
   );
+  const tags = normalizeTags((raw as { tags?: unknown }).tags);
   return {
     ...raw,
     deviceTypeId,
+    tags,
     portSlots,
     brand: trimOptString((raw as { brand?: unknown }).brand),
     ipAddress: trimOptString((raw as { ipAddress?: unknown }).ipAddress),

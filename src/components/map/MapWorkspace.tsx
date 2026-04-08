@@ -19,6 +19,10 @@ import {
   REPOSITION_STEP_PX,
 } from "@/constants/reposition";
 import { deviceMatchesSearch } from "@/lib/deviceSearch";
+import {
+  DEVICE_TYPE_LABELS,
+  type DeviceTypeId,
+} from "@/constants/deviceTypes";
 
 const zones: Zone[] = [];
 
@@ -52,6 +56,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     addLayer,
     updateLayer,
     deleteLayer,
+    mergeLayers,
     toggleLayerVisibility,
     showAllLayers,
     hideAllLayers,
@@ -74,11 +79,16 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
   );
 
   const [search, setSearch] = useState("");
+  const [deviceTypeFilter, setDeviceTypeFilter] = useState<
+    DeviceTypeId | "all"
+  >("all");
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [deviceFormId, setDeviceFormId] = useState<string | null>(null);
   const [deviceFormMode, setDeviceFormMode] = useState<"create" | "edit">("create");
   const [layerFormOpen, setLayerFormOpen] = useState(false);
   const [layerFormLayer, setLayerFormLayer] = useState<Layer | null>(null);
+  const [mergeFormOpen, setMergeFormOpen] = useState(false);
+  const [mergeSelectedIds, setMergeSelectedIds] = useState<string[]>([]);
   const [repositionMode, setRepositionMode] = useState(false);
 
   const isLg = useMediaQuery("(min-width: 1024px)");
@@ -111,11 +121,32 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     router.replace(`/map/${floorId}`, { scroll: false });
   }, [hydrated, floorId, selectParam, router]);
 
+  const mergeLayerInitial = useMemo((): Layer | null => {
+    if (mergeSelectedIds.length < 2) return null;
+    const picked = layers.filter((l) => mergeSelectedIds.includes(l.id));
+    if (picked.length < 2) return null;
+    const kind = picked.some((l) => l.kind === "server") ? "server" : "standard";
+    return {
+      id: "__merge__",
+      name: picked.map((l) => l.name).join(" / "),
+      icon: picked[0].icon,
+      color: picked[0].color,
+      description: "",
+      visible: true,
+      kind,
+    };
+  }, [layers, mergeSelectedIds]);
+
+  const typeFilteredDevices = useMemo(() => {
+    if (deviceTypeFilter === "all") return visibleDevices;
+    return visibleDevices.filter((d) => d.deviceTypeId === deviceTypeFilter);
+  }, [visibleDevices, deviceTypeFilter]);
+
   const filteredDevices = useMemo(() => {
     const q = search.trim();
-    if (!q) return visibleDevices;
-    return visibleDevices.filter((d) => deviceMatchesSearch(d, q));
-  }, [visibleDevices, search]);
+    if (!q) return typeFilteredDevices;
+    return typeFilteredDevices.filter((d) => deviceMatchesSearch(d, q));
+  }, [typeFilteredDevices, search]);
 
   const handleDeviceClick = useCallback(
     (device: Device) => {
@@ -239,6 +270,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         deviceTypeId: "other",
         properties: [],
         portSlots: [],
+        tags: [],
       });
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
@@ -266,6 +298,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         deviceTypeId: parent.deviceTypeId,
         properties: [],
         portSlots: [],
+        tags: [],
       });
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
@@ -310,12 +343,16 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     : null;
 
   const openLayerCreate = useCallback(() => {
+    setMergeFormOpen(false);
+    setMergeSelectedIds([]);
     setLayerFormLayer(null);
     setLayerFormOpen(true);
   }, []);
 
   const openLayerEdit = useCallback(
     (layerId: string) => {
+      setMergeFormOpen(false);
+      setMergeSelectedIds([]);
       const l = layerById(layerId);
       if (l) {
         setLayerFormLayer(l);
@@ -323,6 +360,24 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       }
     },
     [layerById]
+  );
+
+  const openMergeLayers = useCallback(() => {
+    setLayerFormOpen(false);
+    setLayerFormLayer(null);
+    setMergeFormOpen(true);
+    setMergeSelectedIds([]);
+  }, []);
+
+  const handleMergeLayerSave = useCallback(
+    (data: Omit<Layer, "id">) => {
+      const id = mergeLayers(mergeSelectedIds, data);
+      if (id) {
+        setMergeFormOpen(false);
+        setMergeSelectedIds([]);
+      }
+    },
+    [mergeSelectedIds, mergeLayers]
   );
 
   const handleLayerSave = useCallback(
@@ -369,10 +424,14 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         activeFloorName={activeFloorName}
         search={search}
         onSearchChange={setSearch}
+        deviceTypeFilter={deviceTypeFilter}
+        onDeviceTypeFilterChange={setDeviceTypeFilter}
         searchHint={
           search.trim()
-            ? `Showing ${filteredDevices.length} of ${visibleDevices.length} devices on the floor plan.`
-            : "Filters which devices appear as markers on the map (name, description, IP, properties, ports…)."
+            ? `Showing ${filteredDevices.length} of ${typeFilteredDevices.length} on the floor plan after search.`
+            : deviceTypeFilter !== "all"
+              ? `${typeFilteredDevices.length} device(s) with type “${DEVICE_TYPE_LABELS[deviceTypeFilter]}” on visible layers. Use search to narrow by name, tags, IP, and more.`
+              : "Filters which devices appear as markers on the map (name, description, IP, properties, ports, tags…)."
         }
         layers={layers}
         activeLayerId={activeLayerId}
@@ -382,6 +441,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         onShowAll={showAllLayers}
         onHideAll={hideAllLayers}
         onNewLayer={openLayerCreate}
+        onOpenMerge={openMergeLayers}
         onEditLayer={openLayerEdit}
         onDeleteLayer={deleteLayer}
         deviceCountByLayer={deviceCountByLayer}
@@ -426,7 +486,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
       </main>
 
       <LayerForm
-        open={layerFormOpen}
+        open={layerFormOpen && !mergeFormOpen}
         mode={layerFormLayer ? "edit" : "create"}
         initial={layerFormLayer}
         onSave={handleLayerSave}
@@ -442,6 +502,53 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         onClose={() => {
           setLayerFormOpen(false);
           setLayerFormLayer(null);
+        }}
+      />
+
+      <LayerForm
+        key={mergeSelectedIds.slice().sort().join("|")}
+        open={mergeFormOpen}
+        mode="merge"
+        initial={mergeLayerInitial}
+        submitDisabled={mergeSelectedIds.length < 2}
+        topSlot={
+          <div className="space-y-2 pb-4 border-b border-border">
+            <p className="text-xs text-text-muted leading-relaxed">
+              Select at least two layers to combine. All devices on those layers move to the new layer below; nothing is deleted except the old layer entries.
+            </p>
+            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+              {layers.map((layer) => (
+                <label
+                  key={layer.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer rounded-md px-1 py-0.5 hover:bg-bg-hover/80"
+                >
+                  <input
+                    type="checkbox"
+                    checked={mergeSelectedIds.includes(layer.id)}
+                    onChange={(e) => {
+                      setMergeSelectedIds((prev) =>
+                        e.target.checked
+                          ? [...prev, layer.id]
+                          : prev.filter((id) => id !== layer.id)
+                      );
+                    }}
+                    className="rounded border-border shrink-0"
+                  />
+                  <span className="flex-1 min-w-0 truncate text-text-primary">
+                    {layer.name}
+                  </span>
+                  <span className="text-[10px] text-text-muted tabular-nums shrink-0">
+                    {deviceCountByLayer[layer.id] ?? 0}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        }
+        onSave={handleMergeLayerSave}
+        onClose={() => {
+          setMergeFormOpen(false);
+          setMergeSelectedIds([]);
         }}
       />
 

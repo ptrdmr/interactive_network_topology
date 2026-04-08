@@ -8,12 +8,20 @@ import { ExportImport } from "./ExportImport";
 import { FloorPlanUpload } from "./FloorPlanUpload";
 import type { Layer } from "@/types/layer";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  DEVICE_TYPE_IDS,
+  DEVICE_TYPE_LABELS,
+  type DeviceTypeId,
+} from "@/constants/deviceTypes";
 
 interface SidebarProps {
   /** Current floor name (map view). */
   activeFloorName: string;
   search: string;
   onSearchChange: (value: string) => void;
+  /** Map only: restrict markers by built-in device type (second filter after layers). */
+  deviceTypeFilter?: DeviceTypeId | "all";
+  onDeviceTypeFilterChange?: (value: DeviceTypeId | "all") => void;
   /** Explains what search affects (e.g. map vs topology) and optional result counts. */
   searchHint?: string;
   layers: Layer[];
@@ -24,6 +32,7 @@ interface SidebarProps {
   onShowAll: () => void;
   onHideAll: () => void;
   onNewLayer: () => void;
+  onOpenMerge?: () => void;
   onEditLayer: (layerId: string) => void;
   onDeleteLayer: (layerId: string) => void;
   deviceCountByLayer: Record<string, number>;
@@ -50,6 +59,8 @@ export function Sidebar({
   activeFloorName,
   search,
   onSearchChange,
+  deviceTypeFilter,
+  onDeviceTypeFilterChange,
   searchHint,
   layers,
   activeLayerId,
@@ -59,6 +70,7 @@ export function Sidebar({
   onShowAll,
   onHideAll,
   onNewLayer,
+  onOpenMerge,
   onEditLayer,
   onDeleteLayer,
   deviceCountByLayer,
@@ -174,6 +186,33 @@ export function Sidebar({
 
             <div>
               <SearchBar value={search} onChange={onSearchChange} />
+              {onDeviceTypeFilterChange != null && deviceTypeFilter != null && (
+                <div className="mt-3">
+                  <label
+                    htmlFor="sidebar-device-type-filter"
+                    className="block text-xs font-medium text-text-muted mb-1.5"
+                  >
+                    Device type
+                  </label>
+                  <select
+                    id="sidebar-device-type-filter"
+                    value={deviceTypeFilter}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "all") onDeviceTypeFilterChange("all");
+                      else onDeviceTypeFilterChange(v as DeviceTypeId);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  >
+                    <option value="all">All types</option>
+                    {DEVICE_TYPE_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {DEVICE_TYPE_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {searchHint ? (
                 <p className="mt-2 text-[10px] leading-snug text-text-muted px-0.5">
                   {searchHint}
@@ -189,6 +228,7 @@ export function Sidebar({
               onShowAll={onShowAll}
               onHideAll={onHideAll}
               onNewLayer={onNewLayer}
+              onOpenMerge={onOpenMerge}
               onEditLayer={onEditLayer}
               onDeleteLayer={onDeleteLayer}
               deviceCountByLayer={deviceCountByLayer}

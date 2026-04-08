@@ -305,6 +305,40 @@ function useAppStateImpl() {
     [patchActiveFloor]
   );
 
+  /**
+   * Combine multiple layers into one new layer: reassigns all devices on source layers,
+   * removes source layer rows (devices are kept). Requires at least two distinct layer ids.
+   */
+  const mergeLayers = useCallback(
+    (sourceLayerIds: string[], newLayer: Omit<Layer, "id">) => {
+      const uniq = [...new Set(sourceLayerIds)].filter(Boolean);
+      if (uniq.length < 2) return null;
+      const newLayerId = newId("layer");
+      let applied = false;
+      patchActiveFloor((fp) => {
+        const sourceSet = new Set(uniq);
+        if (!uniq.every((id) => fp.layers.some((l) => l.id === id))) {
+          return fp;
+        }
+        applied = true;
+        return {
+          ...fp,
+          layers: [
+            ...fp.layers.filter((l) => !sourceSet.has(l.id)),
+            { ...newLayer, id: newLayerId },
+          ],
+          devices: fp.devices.map((d) =>
+            sourceSet.has(d.layerId) ? { ...d, layerId: newLayerId } : d
+          ),
+        };
+      });
+      if (!applied) return null;
+      setActiveLayerId(newLayerId);
+      return newLayerId;
+    },
+    [patchActiveFloor]
+  );
+
   const toggleLayerVisibility = useCallback(
     (id: string) => {
       patchActiveFloor((fp) => ({
@@ -484,6 +518,7 @@ function useAppStateImpl() {
     addLayer,
     updateLayer,
     deleteLayer,
+    mergeLayers,
     toggleLayerVisibility,
     showAllLayers,
     hideAllLayers,

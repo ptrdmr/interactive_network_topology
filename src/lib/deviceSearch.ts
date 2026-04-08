@@ -24,6 +24,10 @@ export function deviceMatchesSearch(device: Device, query: string): boolean {
     if (str(p.key).includes(q) || str(p.value).includes(q)) return true;
   }
 
+  for (const t of device.tags) {
+    if (str(t).includes(q)) return true;
+  }
+
   for (const slot of device.portSlots ?? []) {
     if (
       str(slot.label).includes(q) ||

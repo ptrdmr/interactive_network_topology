@@ -168,6 +168,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         deviceTypeId: parent.deviceTypeId,
         properties: [],
         portSlots: [],
+        tags: [],
       });
       setSelectedDeviceId(id);
     },

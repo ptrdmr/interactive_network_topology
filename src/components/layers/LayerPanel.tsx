@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Plus } from "lucide-react";
+import { Eye, EyeOff, GitMerge, Plus } from "lucide-react";
 import type { Layer } from "@/types/layer";
 import { LayerToggle } from "./LayerToggle";
 
@@ -12,6 +12,8 @@ interface LayerPanelProps {
   onShowAll: () => void;
   onHideAll: () => void;
   onNewLayer: () => void;
+  /** Combine multiple layers into one (map workflow). */
+  onOpenMerge?: () => void;
   onEditLayer: (layerId: string) => void;
   onDeleteLayer: (layerId: string) => void;
   deviceCountByLayer: Record<string, number>;
@@ -25,6 +27,7 @@ export function LayerPanel({
   onShowAll,
   onHideAll,
   onNewLayer,
+  onOpenMerge,
   onEditLayer,
   onDeleteLayer,
   deviceCountByLayer,
@@ -35,7 +38,7 @@ export function LayerPanel({
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
           Layers
         </h3>
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center flex-wrap justify-end">
           <button
             type="button"
             onClick={onNewLayer}
@@ -44,6 +47,17 @@ export function LayerPanel({
             <Plus className="w-3.5 h-3.5" />
             New
           </button>
+          {onOpenMerge && layers.length >= 2 && (
+            <button
+              type="button"
+              onClick={onOpenMerge}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-bg-card border border-border text-text-primary hover:bg-bg-hover transition-colors"
+              title="Merge selected layers into a new layer"
+            >
+              <GitMerge className="w-3.5 h-3.5" />
+              Merge
+            </button>
+          )}
           <button
             type="button"
             onClick={onShowAll}

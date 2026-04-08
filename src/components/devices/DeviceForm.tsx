@@ -35,6 +35,20 @@ function slotHasData(s: PortSlot): boolean {
   );
 }
 
+function dedupeTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of tags) {
+    const tr = t.trim();
+    if (!tr) continue;
+    const k = tr.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(tr);
+  }
+  return out;
+}
+
 function cleanPortSlots(slots: PortSlot[]): PortSlot[] {
   return slots.map((s) => {
     const out: PortSlot = {};
@@ -70,6 +84,8 @@ export function DeviceForm({
   const [physicalLocation, setPhysicalLocation] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [installDate, setInstallDate] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   /** True when the user chose “Other…” or the saved brand isn’t in the current type’s list. */
   const [brandIsCustom, setBrandIsCustom] = useState(false);
 
@@ -125,6 +141,8 @@ export function DeviceForm({
     setPhysicalLocation(device.physicalLocation ?? "");
     setSerialNumber(device.serialNumber ?? "");
     setInstallDate(device.installDate ?? "");
+    setTags(device.tags?.length ? [...device.tags] : []);
+    setTagInput("");
   }, [open, device]);
 
   if (!open || !device) return null;
@@ -150,7 +168,15 @@ export function DeviceForm({
       installDate: installDate.trim() || undefined,
       properties: cleanedProps,
       portSlots: cleanPortSlots(portSlots),
+      tags: dedupeTags(tags),
     });
+  };
+
+  const addTagFromInput = () => {
+    const t = tagInput.trim();
+    if (!t) return;
+    setTags((prev) => dedupeTags([...prev, t]));
+    setTagInput("");
   };
 
   const addRow = () => setProperties((prev) => [...prev, emptyProperty()]);
@@ -321,6 +347,46 @@ export function DeviceForm({
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-y min-h-[72px]"
               placeholder="Notes about this device…"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">Tags</label>
+            <p className="text-[10px] text-text-muted mb-1.5">
+              Used for map search. Separate with comma or Enter; duplicates are ignored.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-bg-card border border-border text-xs text-text-primary"
+                >
+                  {t}
+                  <button
+                    type="button"
+                    onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                    className="p-0.5 rounded hover:bg-bg-hover text-text-muted"
+                    aria-label={`Remove tag ${t}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault();
+                  addTagFromInput();
+                }
+              }}
+              onBlur={() => {
+                if (tagInput.trim()) addTagFromInput();
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+              placeholder="e.g. building-a, wifi"
             />
           </div>
 
