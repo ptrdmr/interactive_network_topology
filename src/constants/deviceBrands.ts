@@ -182,6 +182,14 @@ export const DEVICE_TYPE_BRAND_OPTIONS: Record<DeviceTypeId, readonly string[]> 
     "Monoprice",
     "Generic / unlabeled",
   ],
+  data_drop: [
+    "Leviton",
+    "Panduit",
+    "CommScope",
+    "Corning",
+    "Monoprice",
+    "Generic / unlabeled",
+  ],
   other: ["Generic / unlabeled"],
 };
 

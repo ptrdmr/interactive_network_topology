@@ -15,6 +15,7 @@ export const DEVICE_TYPE_IDS = [
   "camera",
   "printer",
   "patch_panel",
+  "data_drop",
   "other",
 ] as const;
 
@@ -36,6 +37,7 @@ export const DEVICE_TYPE_LABELS: Record<DeviceTypeId, string> = {
   camera: "Camera",
   printer: "Printer",
   patch_panel: "Patch panel",
+  data_drop: "Data drop",
   other: "Other",
 };
 
@@ -56,6 +58,7 @@ export const DEFAULT_DEVICE_TYPE_COLORS: Record<DeviceTypeId, string> = {
   camera: "#ec4899",
   printer: "#eab308",
   patch_panel: "#14b8a6",
+  data_drop: "#0ea5e9",
   other: "#94a3b8",
 };
 

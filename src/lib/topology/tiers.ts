@@ -9,6 +9,7 @@ export const TOPOLOGY_TIER: Record<DeviceTypeId, number> = {
   firewall: 0,
   switch: 1,
   patch_panel: 1,
+  data_drop: 2,
   access_point: 2,
   server: 3,
   server_backup: 3,
