@@ -39,7 +39,7 @@ interface DeviceDetailPanelProps {
   onEdit: () => void;
   onDelete: () => void;
   /** Rack layer + map-level enclosure: visual stack + add units */
-  onAddRackUnit?: () => void;
+  onAddRackUnit?: (face: "front" | "back") => void;
   onMoveRackUnit?: (childId: string, direction: -1 | 1) => void;
   /** Map-only devices: arrow-key reposition mode */
   canRepositionOnMap?: boolean;
@@ -48,6 +48,9 @@ interface DeviceDetailPanelProps {
   onExitRepositionMode?: () => void;
   /** Topology view: narrow graph to this device's neighborhood */
   onFocusInTopology?: () => void;
+  /** Desktop detail width (px); proportions follow window resize via parent. */
+  panelWidthPx?: number;
+  disableTransition?: boolean;
 }
 
 function formatInstallDate(iso: string): string {
@@ -107,6 +110,8 @@ export function DeviceDetailPanel({
   onEnterRepositionMode,
   onExitRepositionMode,
   onFocusInTopology,
+  panelWidthPx,
+  disableTransition,
 }: DeviceDetailPanelProps) {
   const [portsExpanded, setPortsExpanded] = useState(false);
 
@@ -121,7 +126,18 @@ export function DeviceDetailPanel({
     onMoveRackUnit;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-secondary shadow-2xl animate-slide-in sm:max-w-md lg:w-96 lg:max-w-[24rem] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
+    <div
+      className={`fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-secondary shadow-2xl animate-slide-in sm:max-w-md ${
+        disableTransition ? "" : "transition-[width] duration-300"
+      } ${
+        panelWidthPx != null ? "lg:max-w-none" : "lg:w-96 lg:max-w-[24rem]"
+      } pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]`}
+      style={
+        panelWidthPx != null
+          ? { width: `min(100%, ${panelWidthPx}px)` }
+          : undefined
+      }
+    >
       {/* Header */}
       <div className="flex flex-col gap-2 px-5 py-4 border-b border-border">
         {onBackToParent && (

@@ -212,6 +212,9 @@ function useAppStateImpl() {
       devices
         .filter((d) => d.parentId === parentId)
         .sort((a, b) => {
+          const faceA = a.rackFace === "back" ? 1 : 0;
+          const faceB = b.rackFace === "back" ? 1 : 0;
+          if (faceA !== faceB) return faceA - faceB;
           const ao = a.rackOrder ?? 0;
           const bo = b.rackOrder ?? 0;
           if (ao !== bo) return ao - bo;

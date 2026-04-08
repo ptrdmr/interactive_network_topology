@@ -53,6 +53,10 @@ interface SidebarProps {
   /** Controlled drawer/sidebar: `true` = hidden rail or off-canvas overlay. */
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
+  /** Desktop expanded width (px). When set, replaces fixed `w-80` on large screens. */
+  expandedWidthPx?: number;
+  /** Disable width transitions while the user is dragging a resize handle. */
+  disableTransition?: boolean;
 }
 
 export function Sidebar({
@@ -84,6 +88,8 @@ export function Sidebar({
   alternateView,
   collapsed,
   onCollapsedChange,
+  expandedWidthPx,
+  disableTransition,
 }: SidebarProps) {
   const isLg = useMediaQuery("(min-width: 1024px)");
   const AlternateNavIcon = alternateView?.icon === "map" ? MapPin : Network;
@@ -114,9 +120,20 @@ export function Sidebar({
 
       <aside
         id="app-sidebar"
-        className={`fixed top-0 left-0 h-full z-40 flex flex-col bg-bg-secondary border-r border-border transition-all duration-300 ${
-          collapsed ? "-translate-x-full lg:translate-x-0 lg:w-16" : "w-[min(100vw-3rem,20rem)] sm:w-80 translate-x-0"
+        className={`fixed top-0 left-0 h-full z-40 flex flex-col bg-bg-secondary border-r border-border ${
+          disableTransition ? "" : "transition-all duration-300"
+        } ${
+          collapsed
+            ? "-translate-x-full lg:translate-x-0 lg:w-16"
+            : expandedWidthPx != null
+              ? "w-[min(100vw-3rem,20rem)] translate-x-0 lg:w-auto lg:max-w-none"
+              : "w-[min(100vw-3rem,20rem)] sm:w-80 translate-x-0"
         }`}
+        style={
+          !collapsed && isLg && expandedWidthPx != null
+            ? { width: expandedWidthPx }
+            : undefined
+        }
       >
         {/* Header */}
         <div

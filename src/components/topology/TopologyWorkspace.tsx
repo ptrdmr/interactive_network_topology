@@ -10,6 +10,8 @@ import type { FocusHopMode } from "./TopologyControls";
 import { DeviceDetailPanel } from "@/components/devices/DeviceDetailPanel";
 import { useAppState } from "@/hooks/useAppState";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useWorkspacePanelLayout } from "@/hooks/useWorkspacePanelLayout";
+import { PanelResizeHandle } from "@/components/ui/PanelResizeHandle";
 import { filterDevicesForTopology } from "@/lib/topology/buildGraph";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
@@ -69,6 +71,17 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
 
   const isLg = useMediaQuery("(min-width: 1024px)");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  const {
+    viewportWidth,
+    leftExpandedPx,
+    rightPanelPx,
+    mainMarginLeft,
+    dragging,
+    onLeftResizePointerDown,
+    onRightResizePointerDown,
+  } = useWorkspacePanelLayout(isLg, sidebarCollapsed);
+
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync to viewport width
     setSidebarCollapsed(window.innerWidth < 1024);
@@ -172,8 +185,11 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
   );
 
   const handleAddRackUnit = useCallback(
-    (parent: Device) => {
-      const siblings = devices.filter((d) => d.parentId === parent.id);
+    (parent: Device, face: "front" | "back") => {
+      const siblings = devices.filter(
+        (d) =>
+          d.parentId === parent.id && (d.rackFace ?? "front") === face
+      );
       const nextOrder =
         siblings.length === 0
           ? 1
@@ -184,6 +200,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         parentId: parent.id,
         position: { ...parent.position },
         rackOrder: nextOrder,
+        rackFace: face,
         status: "online",
         description: "",
         deviceTypeId: "other",
@@ -198,7 +215,12 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
 
   const handleMoveRackUnit = useCallback(
     (parentId: string, childId: string, direction: -1 | 1) => {
-      const siblings = childrenOf(parentId);
+      const child = deviceById(childId);
+      if (!child) return;
+      const face = child.rackFace ?? "front";
+      const siblings = childrenOf(parentId).filter(
+        (c) => (c.rackFace ?? "front") === face
+      );
       const idx = siblings.findIndex((c) => c.id === childId);
       if (idx < 0) return;
       const swapIdx = idx + direction;
@@ -210,7 +232,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
       updateDevice(a.id, { rackOrder: bo });
       updateDevice(b.id, { rackOrder: ao });
     },
-    [childrenOf, updateDevice]
+    [childrenOf, deviceById, updateDevice]
   );
 
   if (!hydrated) {
@@ -273,12 +295,24 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         }}
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
+        expandedWidthPx={leftExpandedPx}
+        disableTransition={!!dragging}
       />
 
+      {isLg && !sidebarCollapsed && viewportWidth > 0 && (
+        <PanelResizeHandle
+          edge="left"
+          positionLeftPx={leftExpandedPx}
+          onPointerDown={onLeftResizePointerDown}
+          ariaLabel="Resize navigation panel"
+        />
+      )}
+
       <main
-        className={`flex-1 h-full min-h-0 transition-all duration-300 relative ${
-          isLg ? (sidebarCollapsed ? "lg:ml-16" : "lg:ml-80") : "ml-0"
+        className={`flex-1 h-full min-h-0 min-w-0 relative ${
+          dragging ? "" : "transition-[margin] duration-300"
         }`}
+        style={isLg ? { marginLeft: mainMarginLeft } : undefined}
       >
         <TopologyCanvas
           floorDevices={devices}
@@ -355,7 +389,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
             }}
             onAddRackUnit={
               isServerRackRoot
-                ? () => handleAddRackUnit(selectedDevice)
+                ? (face) => handleAddRackUnit(selectedDevice, face)
                 : undefined
             }
             onMoveRackUnit={
@@ -364,6 +398,8 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
                     handleMoveRackUnit(selectedDevice.id, childId, direction)
                 : undefined
             }
+            panelWidthPx={rightPanelPx}
+            disableTransition={!!dragging}
             canRepositionOnMap={false}
             onFocusInTopology={() => {
               setFocusDeviceId(selectedDevice.id);
@@ -371,6 +407,15 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
           />
         );
       })()}
+
+      {isLg && selectedDevice && viewportWidth > 0 && (
+        <PanelResizeHandle
+          edge="right"
+          positionLeftPx={viewportWidth - rightPanelPx}
+          onPointerDown={onRightResizePointerDown}
+          ariaLabel="Resize device detail panel"
+        />
+      )}
 
       <LandscapeHint />
     </div>

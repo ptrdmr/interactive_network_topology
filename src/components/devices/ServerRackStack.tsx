@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  type MutableRefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Circle, Plus } from "lucide-react";
@@ -16,6 +17,8 @@ import { DeviceMapDockPanel } from "@/components/map/DeviceMapHoverCard";
 const HOVER_GAP_PX = 8;
 const POPOVER_Z = 100;
 const VIEW_MARGIN_PX = 8;
+
+export type RackFaceId = "front" | "back";
 
 function viewportHeight(): number {
   if (typeof window === "undefined") return 800;
@@ -29,7 +32,7 @@ interface ServerRackStackProps {
   resolveDeviceTypeColor: (typeId: Device["deviceTypeId"]) => string;
   children: Device[];
   onSelectDevice: (device: Device) => void;
-  onAddUnit: () => void;
+  onAddUnit: (face: RackFaceId) => void;
   onMoveUnit: (childId: string, direction: -1 | 1) => void;
 }
 
@@ -51,6 +54,17 @@ export function ServerRackStack({
   const popoverWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const childrenSig = useMemo(() => children.map((c) => c.id).join(","), [children]);
+
+  const frontUnits = useMemo(
+    () =>
+      children.filter((c) => (c.rackFace ?? "front") === "front"),
+    [children]
+  );
+  const backUnits = useMemo(
+    () =>
+      children.filter((c) => (c.rackFace ?? "front") === "back"),
+    [children]
+  );
 
   const cancelHoverClear = useCallback(() => {
     if (hoverClearTimerRef.current !== null) {
@@ -220,99 +234,169 @@ export function ServerRackStack({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
             Rack stack
           </p>
-          <p className="text-[11px] text-text-muted">Top → bottom (units are ordered)</p>
+          <p className="text-[11px] text-text-muted">
+            Front and rear — top → bottom within each side
+          </p>
         </div>
         <div className="h-8 w-1 rounded-full bg-border/80 shrink-0" aria-hidden />
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 min-h-0">
+        <RackFaceColumn
+          face="front"
+          label="Front"
+          units={frontUnits}
+          resolveLayerMeta={resolveLayerMeta}
+          resolveDeviceTypeColor={resolveDeviceTypeColor}
+          rowRefs={rowRefs}
+          onSelectDevice={onSelectDevice}
+          onMoveUnit={onMoveUnit}
+          onAddUnit={() => onAddUnit("front")}
+          handleRowHover={handleRowHover}
+          onScroll={() => {
+            if (hoveredUnitId) updatePopoverPosition(hoveredUnitId);
+          }}
+        />
+        <RackFaceColumn
+          face="back"
+          label="Back"
+          units={backUnits}
+          resolveLayerMeta={resolveLayerMeta}
+          resolveDeviceTypeColor={resolveDeviceTypeColor}
+          rowRefs={rowRefs}
+          onSelectDevice={onSelectDevice}
+          onMoveUnit={onMoveUnit}
+          onAddUnit={() => onAddUnit("back")}
+          handleRowHover={handleRowHover}
+          onScroll={() => {
+            if (hoveredUnitId) updatePopoverPosition(hoveredUnitId);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface RackFaceColumnProps {
+  face: RackFaceId;
+  label: string;
+  units: Device[];
+  resolveLayerMeta: (layerId: string) => { name: string; color: string };
+  resolveDeviceTypeColor: (typeId: Device["deviceTypeId"]) => string;
+  rowRefs: MutableRefObject<Map<string, HTMLDivElement>>;
+  onSelectDevice: (device: Device) => void;
+  onMoveUnit: (childId: string, direction: -1 | 1) => void;
+  onAddUnit: () => void;
+  handleRowHover: (id: string | null) => void;
+  onScroll: () => void;
+}
+
+function RackFaceColumn({
+  face,
+  label,
+  units,
+  resolveLayerMeta,
+  resolveDeviceTypeColor,
+  rowRefs,
+  onSelectDevice,
+  onMoveUnit,
+  onAddUnit,
+  handleRowHover,
+  onScroll,
+}: RackFaceColumnProps) {
+  return (
+    <div className="flex flex-col min-h-0 rounded-lg border border-border/70 bg-bg-primary/40 overflow-hidden">
+      <div className="px-2 py-1.5 border-b border-border/60 bg-bg-primary/70 shrink-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-center">
+          {label}
+        </p>
+      </div>
       <div
-        className="overflow-y-auto p-2 space-y-1.5 max-h-[min(60vh,420px)] min-h-0"
-        onScroll={() => {
-          if (hoveredUnitId) updatePopoverPosition(hoveredUnitId);
-        }}
+        className="overflow-y-auto p-1.5 space-y-1.5 max-h-[min(50vh,360px)] min-h-0"
+        onScroll={onScroll}
       >
-        {children.length === 0 ? (
-          <p className="text-xs text-text-muted text-center py-6 px-2">
-            No units yet. Add hardware to build the rack layout — each unit has its own documentation.
+        {units.length === 0 ? (
+          <p className="text-[11px] text-text-muted text-center py-4 px-1 leading-snug">
+            No units on this side yet.
           </p>
         ) : (
-          children.map((unit, index) => {
+          units.map((unit, index) => {
             const unitLayer = resolveLayerMeta(unit.layerId);
             return (
-            <div
-              key={unit.id}
-              ref={(el) => {
-                if (el) rowRefs.current.set(unit.id, el);
-                else rowRefs.current.delete(unit.id);
-              }}
-              className="group flex items-stretch gap-1 rounded-lg border border-border/60 bg-bg-card/90 hover:border-accent/40 transition-colors overflow-hidden"
-              style={{
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-                borderLeftWidth: 3,
-                borderLeftColor: unitLayer.color,
-              }}
-              title={unitLayer.name}
-              onMouseEnter={() => handleRowHover(unit.id)}
-              onMouseLeave={() => handleRowHover(null)}
-            >
               <div
-                className="flex flex-col items-center justify-center gap-0.5 px-1 py-1 bg-bg-primary/70 border-r border-border/50 shrink-0"
-                style={{ minWidth: "2.25rem" }}
-              >
-                <button
-                  type="button"
-                  className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-25"
-                  disabled={index === 0}
-                  onClick={() => onMoveUnit(unit.id, -1)}
-                  title="Move up"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <span className="text-[10px] font-mono font-bold text-text-muted tabular-nums">
-                  U{index + 1}
-                </span>
-                <button
-                  type="button"
-                  className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-25"
-                  disabled={index === children.length - 1}
-                  onClick={() => onMoveUnit(unit.id, 1)}
-                  title="Move down"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onSelectDevice(unit)}
-                className="flex-1 flex items-center gap-2 min-w-0 text-left py-2 pr-2 pl-1"
+                key={unit.id}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(unit.id, el);
+                  else rowRefs.current.delete(unit.id);
+                }}
+                className="group flex items-stretch gap-1 rounded-lg border border-border/60 bg-bg-card/90 hover:border-accent/40 transition-colors overflow-hidden"
+                style={{
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                  borderLeftWidth: 3,
+                  borderLeftColor: unitLayer.color,
+                }}
+                title={unitLayer.name}
+                onMouseEnter={() => handleRowHover(unit.id)}
+                onMouseLeave={() => handleRowHover(null)}
               >
                 <div
-                  className="w-1 self-stretch rounded-full shrink-0 opacity-90"
-                  style={{
-                    backgroundColor: resolveDeviceTypeColor(unit.deviceTypeId),
-                  }}
-                />
-                <Circle
-                  className={`w-2.5 h-2.5 shrink-0 fill-current ${
-                    unit.status === "online"
-                      ? "text-status-online"
-                      : unit.status === "offline"
-                      ? "text-status-offline"
-                      : "text-status-maintenance"
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-text-primary truncate">{unit.name}</p>
-                  <p className="text-[10px] text-text-muted truncate">
-                    {unit.description ||
-                      (unit.properties[0]
-                        ? `${unit.properties[0].key}: ${unit.properties[0].value}`
-                        : "Tap to open docs")}
-                  </p>
+                  className="flex flex-col items-center justify-center gap-0.5 px-1 py-1 bg-bg-primary/70 border-r border-border/50 shrink-0"
+                  style={{ minWidth: "2.25rem" }}
+                >
+                  <button
+                    type="button"
+                    className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-25"
+                    disabled={index === 0}
+                    onClick={() => onMoveUnit(unit.id, -1)}
+                    title="Move up"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <span className="text-[10px] font-mono font-bold text-text-muted tabular-nums">
+                    U{index + 1}
+                  </span>
+                  <button
+                    type="button"
+                    className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-25"
+                    disabled={index === units.length - 1}
+                    onClick={() => onMoveUnit(unit.id, 1)}
+                    title="Move down"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
                 </div>
-              </button>
-            </div>
+
+                <button
+                  type="button"
+                  onClick={() => onSelectDevice(unit)}
+                  className="flex-1 flex items-center gap-2 min-w-0 text-left py-2 pr-2 pl-1"
+                >
+                  <div
+                    className="w-1 self-stretch rounded-full shrink-0 opacity-90"
+                    style={{
+                      backgroundColor: resolveDeviceTypeColor(unit.deviceTypeId),
+                    }}
+                  />
+                  <Circle
+                    className={`w-2.5 h-2.5 shrink-0 fill-current ${
+                      unit.status === "online"
+                        ? "text-status-online"
+                        : unit.status === "offline"
+                        ? "text-status-offline"
+                        : "text-status-maintenance"
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-text-primary truncate">{unit.name}</p>
+                    <p className="text-[10px] text-text-muted truncate">
+                      {unit.description ||
+                        (unit.properties[0]
+                          ? `${unit.properties[0].key}: ${unit.properties[0].value}`
+                          : "Tap to open docs")}
+                    </p>
+                  </div>
+                </button>
+              </div>
             );
           })
         )}
@@ -321,10 +405,10 @@ export function ServerRackStack({
       <button
         type="button"
         onClick={onAddUnit}
-        className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-medium text-accent-light bg-bg-primary/50 hover:bg-bg-hover border-t border-border transition-colors shrink-0"
+        className="w-full flex items-center justify-center gap-2 py-2 text-[11px] font-medium text-accent-light bg-bg-primary/50 hover:bg-bg-hover border-t border-border transition-colors shrink-0"
       >
-        <Plus className="w-4 h-4" />
-        Add unit to rack
+        <Plus className="w-3.5 h-3.5" />
+        Add to {face === "front" ? "front" : "back"}
       </button>
     </div>
   );

@@ -27,6 +27,8 @@ export interface Device {
   parentId?: string;
   /** Vertical order inside a rack enclosure (lower = top of stack). */
   rackOrder?: number;
+  /** Front vs rear of the enclosure (rack units only; default front). */
+  rackFace?: "front" | "back";
   status: DeviceStatus;
   description: string;
   /** Vendor / manufacturer (may match a per–device-type suggestion or a custom value). */

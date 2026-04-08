@@ -96,6 +96,7 @@ export function DeviceForm({
   /** True when the user chose “Other…” or the saved brand isn’t in the current type’s list. */
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [layerId, setLayerId] = useState("");
+  const [rackFace, setRackFace] = useState<"front" | "back">("front");
 
   const effectiveTypeId: DeviceTypeId = lockDeviceTypeToRack ? "rack" : deviceTypeId;
 
@@ -156,9 +157,17 @@ export function DeviceForm({
     setTags(device.tags?.length ? [...device.tags] : []);
     setTagInput("");
     setLayerId(device.layerId);
+    setRackFace(device.rackFace === "back" ? "back" : "front");
   }, [open, device, lockDeviceTypeToRack]);
 
   if (!open || !device) return null;
+
+  const parentForRackFace =
+    device.parentId != null
+      ? allDevices.find((d) => d.id === device.parentId)
+      : undefined;
+  const showRackFaceSelector =
+    !!device.parentId && parentForRackFace?.deviceTypeId === "rack";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,6 +183,7 @@ export function DeviceForm({
       description: description.trim(),
       status,
       deviceTypeId: lockDeviceTypeToRack ? "rack" : deviceTypeId,
+      rackFace: showRackFaceSelector ? rackFace : undefined,
       brand: brandTrim || undefined,
       ipAddress: ipAddress.trim() || undefined,
       macAddress: macAddress.trim() || undefined,
@@ -292,6 +302,27 @@ export function DeviceForm({
               ))}
             </select>
           </div>
+
+          {showRackFaceSelector && (
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">
+                Rack side
+              </label>
+              <select
+                value={rackFace}
+                onChange={(e) =>
+                  setRackFace(e.target.value === "back" ? "back" : "front")
+                }
+                className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+              >
+                <option value="front">Front</option>
+                <option value="back">Back</option>
+              </select>
+              <p className="text-[10px] text-text-muted mt-1.5">
+                Equipment mounted on the front or rear of the enclosure.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Status</label>
