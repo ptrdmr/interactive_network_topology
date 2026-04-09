@@ -8,6 +8,7 @@ import type {
   TopologyEdgeData,
   TopologyNodeData,
 } from "./types";
+import { TOPOLOGY_TIER, orientEdgeForStackLayout } from "./tiers";
 
 function layerMeta(
   layers: Layer[],
@@ -62,6 +63,9 @@ export function buildGraph(
   const idSet = new Set(contextList.map((c) => c.device.id));
   const idToName = new Map(
     contextList.map((c) => [c.device.id, c.device.name] as const)
+  );
+  const idToDevice = new Map(
+    contextList.map((c) => [c.device.id, c.device] as const)
   );
 
   const nodes: Node<TopologyNodeData>[] = contextList.map((c) => {
@@ -132,10 +136,24 @@ export function buildGraph(
         label = aPort ?? bPort ?? "Port link";
       }
 
+      const da = idToDevice.get(a);
+      const db = idToDevice.get(b);
+      const { source, target } =
+        da && db
+          ? orientEdgeForStackLayout(
+              a,
+              TOPOLOGY_TIER[da.deviceTypeId],
+              b,
+              TOPOLOGY_TIER[db.deviceTypeId]
+            )
+          : a < b
+            ? { source: a, target: b }
+            : { source: b, target: a };
+
       edges.push({
         id: `port-${a}-${b}`,
-        source: a,
-        target: b,
+        source,
+        target,
         type: "smoothstep",
         data: { kind: "port", label },
       });
@@ -159,10 +177,19 @@ export function buildGraph(
 
         const keyLabel = p.key.trim() || "property";
         const targetName = idToName.get(b) ?? "device";
+        const peer = idToDevice.get(b);
+        const { source, target } = peer
+          ? orientEdgeForStackLayout(
+              d.id,
+              TOPOLOGY_TIER[d.deviceTypeId],
+              b,
+              TOPOLOGY_TIER[peer.deviceTypeId]
+            )
+          : { source: a, target: b };
         edges.push({
           id: `prop-${a}-${b}`,
-          source: a,
-          target: b,
+          source,
+          target,
           type: "smoothstep",
           data: {
             kind: "property",

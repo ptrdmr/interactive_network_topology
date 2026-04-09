@@ -14,6 +14,8 @@ export type LayoutDirection = "TB" | "LR";
 type AnyTopoNode = Node<TopologyNodeData | TopologyGroupNodeData>;
 
 const COMPONENT_GAP = 120;
+/** Vertical/horizontal gap between topology tiers (matches dagre ranksep). */
+const TIER_BAND_GAP = 72;
 
 function dimensionsFor(node: AnyTopoNode): { width: number; height: number } {
   if (node.type === "topologyGroup") {
@@ -28,6 +30,93 @@ function rankForNode(node: AnyTopoNode): number {
   }
   const data = node.data as TopologyNodeData;
   return TOPOLOGY_TIER[data.deviceTypeId];
+}
+
+/**
+ * After dagre, snap each connected component onto strict tier bands so lower tier
+ * numbers always sit upstream on the flow axis (TB: higher on screen, LR: further left).
+ * Orthogonal coordinates come from dagre; only the flow-axis position is overridden.
+ */
+function enforceTierStackOrder(
+  nodes: AnyTopoNode[],
+  edges: Edge[],
+  direction: LayoutDirection
+): AnyTopoNode[] {
+  if (nodes.length === 0) return nodes;
+
+  const ids = nodes.map((n) => n.id);
+  const components = findConnectedComponents(ids, edges);
+  const nodeById = new Map(nodes.map((n) => [n.id, n] as const));
+  const nextPos = new Map<string, { x: number; y: number }>();
+
+  for (const comp of components) {
+    const compNodes = comp
+      .map((id) => nodeById.get(id))
+      .filter((n): n is AnyTopoNode => n != null);
+    if (compNodes.length === 0) continue;
+
+    const byTier = new Map<number, AnyTopoNode[]>();
+    for (const n of compNodes) {
+      const t = rankForNode(n);
+      if (!byTier.has(t)) byTier.set(t, []);
+      byTier.get(t)!.push(n);
+    }
+    const tiers = [...byTier.keys()].sort((a, b) => a - b);
+    const minTier = tiers[0]!;
+
+    if (direction === "TB") {
+      const tier0Nodes = byTier.get(minTier)!;
+      let bandTop = Math.min(...tier0Nodes.map((n) => n.position.y));
+
+      for (const t of tiers) {
+        const row = byTier.get(t)!;
+        const maxH = Math.max(
+          ...row.map((n) => dimensionsFor(n).height),
+          1
+        );
+        const centerY = bandTop + maxH / 2;
+        for (const n of row) {
+          const { width, height } = dimensionsFor(n);
+          nextPos.set(n.id, {
+            x: n.position.x,
+            y: centerY - height / 2,
+          });
+        }
+        bandTop += maxH + TIER_BAND_GAP;
+      }
+    } else {
+      const tier0Nodes = byTier.get(minTier)!;
+      let bandLeft = Math.min(
+        ...tier0Nodes.map((n) => {
+          const { width } = dimensionsFor(n);
+          return n.position.x;
+        })
+      );
+
+      for (const t of tiers) {
+        const row = byTier.get(t)!;
+        const maxW = Math.max(
+          ...row.map((n) => dimensionsFor(n).width),
+          1
+        );
+        const centerX = bandLeft + maxW / 2;
+        for (const n of row) {
+          const { width, height } = dimensionsFor(n);
+          nextPos.set(n.id, {
+            x: centerX - width / 2,
+            y: n.position.y,
+          });
+        }
+        bandLeft += maxW + TIER_BAND_GAP;
+      }
+    }
+  }
+
+  return nodes.map((n) => {
+    const p = nextPos.get(n.id);
+    if (!p) return n;
+    return { ...n, position: p };
+  });
 }
 
 function findConnectedComponents(
@@ -189,5 +278,7 @@ export function layoutGraph(
     };
   });
 
-  return tileDisconnectedComponents(positioned, edges);
+  const tierOrdered = enforceTierStackOrder(positioned, edges, direction);
+
+  return tileDisconnectedComponents(tierOrdered, edges);
 }

@@ -35,3 +35,23 @@ export const TOPOLOGY_TIER_LABELS: Record<number, string> = {
   4: "Infrastructure",
   5: "Other",
 };
+
+/**
+ * Physical links are undirected; dagre uses edge direction for TB layout.
+ * Orient core/WAN-side types (lower tier number) → downstream so hierarchy matches reality.
+ */
+export function orientEdgeForStackLayout(
+  idA: string,
+  tierA: number,
+  idB: string,
+  tierB: number
+): { source: string; target: string } {
+  if (tierA !== tierB) {
+    return tierA < tierB
+      ? { source: idA, target: idB }
+      : { source: idB, target: idA };
+  }
+  return idA < idB
+    ? { source: idA, target: idB }
+    : { source: idB, target: idA };
+}

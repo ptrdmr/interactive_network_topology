@@ -1,6 +1,11 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { Layer } from "@/types/layer";
 import type { TopologyEdgeData, TopologyGroupNodeData, TopologyNodeData } from "./types";
+import {
+  TOPOLOGY_GROUP_RANK,
+  TOPOLOGY_TIER,
+  orientEdgeForStackLayout,
+} from "./tiers";
 
 export const LAYER_GROUP_PREFIX = "layer-group-";
 
@@ -65,6 +70,21 @@ export function collapseLayerGroups(
     });
   }
 
+  const nodeById = new Map<
+    string,
+    Node<TopologyNodeData | TopologyGroupNodeData>
+  >(keptNodes.map((n) => [n.id, n] as const));
+
+  function tierForEndpoint(id: string): number {
+    const n = nodeById.get(id);
+    if (!n) return TOPOLOGY_TIER.other;
+    if (n.type === "topologyGroup") return TOPOLOGY_GROUP_RANK;
+    if (isDeviceNode(n)) {
+      return TOPOLOGY_TIER[n.data.deviceTypeId];
+    }
+    return TOPOLOGY_TIER.other;
+  }
+
   function mapEndpoint(id: string): string {
     if (!removedIds.has(id)) return id;
     const node = nodes.find((x) => x.id === id);
@@ -121,10 +141,16 @@ export function collapseLayerGroups(
         : labels.length === 1
           ? labels[0]!
           : `${labels.length} links`;
+    const { source, target } = orientEdgeForStackLayout(
+      a,
+      tierForEndpoint(a),
+      b,
+      tierForEndpoint(b)
+    );
     portEdges.push({
       id: `port-${a}-${b}`,
-      source: a,
-      target: b,
+      source,
+      target,
       type: "smoothstep",
       data: { kind: "port", label: mergedLabel },
     });
