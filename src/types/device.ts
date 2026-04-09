@@ -1,3 +1,4 @@
+import type { CameraVariantId } from "@/constants/cameraVariants";
 import type { DeviceTypeId } from "@/constants/deviceTypes";
 
 export type DeviceStatus = "online" | "offline" | "maintenance";
@@ -45,4 +46,10 @@ export interface Device {
   portSlots?: PortSlot[];
   /** Free-form labels for filtering and search (normalized when saved). */
   tags: string[];
+  /** Camera model / coverage type; FOV angle comes from `CAMERA_VARIANT_FOV_DEG[cameraVariant]`. */
+  cameraVariant?: CameraVariantId;
+  /** Bearing on the floor plan: 0° = north (up), clockwise. */
+  cameraBearingDeg?: number;
+  /** Wedge radius in floor-plan SVG units. */
+  cameraRangePx?: number;
 }

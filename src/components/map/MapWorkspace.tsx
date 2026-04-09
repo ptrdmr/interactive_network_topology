@@ -92,6 +92,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
   const [mergeFormOpen, setMergeFormOpen] = useState(false);
   const [mergeSelectedIds, setMergeSelectedIds] = useState<string[]>([]);
   const [repositionMode, setRepositionMode] = useState(false);
+  const [showCameraFov, setShowCameraFov] = useState(true);
 
   const isLg = useMediaQuery("(min-width: 1024px)");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -488,6 +489,8 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         onCollapsedChange={setSidebarCollapsed}
         expandedWidthPx={leftExpandedPx}
         disableTransition={!!dragging}
+        showCameraFov={showCameraFov}
+        onToggleCameraFov={() => setShowCameraFov((v) => !v)}
       />
 
       {isLg && !sidebarCollapsed && viewportWidth > 0 && (
@@ -521,6 +524,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
           onExitReposition={handleExitRepositionMode}
           onRepositionNudge={handleRepositionNudge}
           resolveDeviceTypeColor={resolveDeviceTypeColor}
+          showCameraFov={showCameraFov}
         />
       </main>
 

@@ -29,6 +29,7 @@ interface MapCanvasProps {
   /** Nudge selected device on map (pixels in floor-plan space). */
   onRepositionNudge?: (dx: number, dy: number) => void;
   resolveDeviceTypeColor: (typeId: DeviceTypeId) => string;
+  showCameraFov?: boolean;
 }
 
 export function MapCanvas({
@@ -45,6 +46,7 @@ export function MapCanvas({
   onExitReposition,
   onRepositionNudge,
   resolveDeviceTypeColor,
+  showCameraFov = true,
 }: MapCanvasProps) {
   const { transform, handlers, zoomIn, zoomOut, fitContentToContainer } = useMapTransform();
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
@@ -196,6 +198,7 @@ export function MapCanvas({
               deviceHoverEnabled={!repositionMode}
               floorPlanImageHref={floorPlanImageHref}
               resolveDeviceTypeColor={resolveDeviceTypeColor}
+              showCameraFov={showCameraFov}
               devMode={devMode}
               placeMode={placeMode && !devMode}
               onSvgClick={handleSvgClick}

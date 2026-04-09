@@ -15,6 +15,10 @@ import {
   Network,
 } from "lucide-react";
 import type { Device } from "@/types/device";
+import {
+  CAMERA_VARIANT_FOV_DEG,
+  CAMERA_VARIANT_LABELS,
+} from "@/constants/cameraVariants";
 import { DEVICE_TYPE_LABELS } from "@/constants/deviceTypes";
 import { Badge } from "@/components/ui/Badge";
 import { ServerRackStack } from "./ServerRackStack";
@@ -312,6 +316,43 @@ export function DeviceDetailPanel({
             </div>
           </section>
         )}
+
+        {device.deviceTypeId === "camera" &&
+          device.cameraVariant != null &&
+          device.cameraBearingDeg != null &&
+          device.cameraRangePx != null && (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+                Coverage
+              </h3>
+              <div className="bg-bg-card rounded-lg px-3 py-1 divide-y divide-border/40">
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Variant</span>
+                  <span className="text-xs text-text-primary text-right">
+                    {CAMERA_VARIANT_LABELS[device.cameraVariant]}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Field of view</span>
+                  <span className="text-xs text-text-primary font-mono tabular-nums text-right">
+                    {CAMERA_VARIANT_FOV_DEG[device.cameraVariant]}°
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Bearing</span>
+                  <span className="text-xs text-text-primary font-mono tabular-nums text-right">
+                    {Math.round(device.cameraBearingDeg)}°
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2 py-2 first:pt-1 last:pb-1">
+                  <span className="text-xs text-text-muted shrink-0">Range</span>
+                  <span className="text-xs text-text-primary font-mono tabular-nums text-right">
+                    {device.cameraRangePx} px
+                  </span>
+                </div>
+              </div>
+            </section>
+          )}
 
         {device.properties.length > 0 && (
           <section>

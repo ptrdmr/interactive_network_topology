@@ -57,6 +57,9 @@ interface SidebarProps {
   expandedWidthPx?: number;
   /** Disable width transitions while the user is dragging a resize handle. */
   disableTransition?: boolean;
+  /** Map only: show camera FOV wedges on the floor plan. */
+  showCameraFov?: boolean;
+  onToggleCameraFov?: () => void;
 }
 
 export function Sidebar({
@@ -90,6 +93,8 @@ export function Sidebar({
   onCollapsedChange,
   expandedWidthPx,
   disableTransition,
+  showCameraFov,
+  onToggleCameraFov,
 }: SidebarProps) {
   const isLg = useMediaQuery("(min-width: 1024px)");
   const AlternateNavIcon = alternateView?.icon === "map" ? MapPin : Network;
@@ -236,6 +241,28 @@ export function Sidebar({
                 </p>
               ) : null}
             </div>
+
+            {onToggleCameraFov != null && typeof showCameraFov === "boolean" && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-bg-card/40 px-3 py-2.5">
+                <span className="text-sm text-text-primary">Camera coverage</span>
+                <button
+                  type="button"
+                  onClick={onToggleCameraFov}
+                  className={`relative inline-flex h-6 w-11 max-sm:h-7 max-sm:w-12 shrink-0 items-center rounded-full transition-colors ${
+                    showCameraFov ? "bg-accent" : "bg-border"
+                  }`}
+                  title={showCameraFov ? "Hide camera coverage" : "Show camera coverage"}
+                  role="switch"
+                  aria-checked={showCameraFov}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 max-sm:h-4 max-sm:w-4 rounded-full bg-white shadow-sm transition-transform ${
+                      showCameraFov ? "translate-x-[22px] max-sm:translate-x-[26px]" : "translate-x-[3px]"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             <LayerPanel
               layers={layers}

@@ -5,6 +5,12 @@ import { X, Trash2, Plus, Minus } from "lucide-react";
 import type { Device, DeviceProperty, DeviceStatus, PortSlot } from "@/types/device";
 import type { Layer } from "@/types/layer";
 import {
+  CAMERA_VARIANT_FOV_DEG,
+  CAMERA_VARIANT_IDS,
+  CAMERA_VARIANT_LABELS,
+  type CameraVariantId,
+} from "@/constants/cameraVariants";
+import {
   DEVICE_TYPE_IDS,
   DEVICE_TYPE_LABELS,
   type DeviceTypeId,
@@ -97,6 +103,9 @@ export function DeviceForm({
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [layerId, setLayerId] = useState("");
   const [rackFace, setRackFace] = useState<"front" | "back">("front");
+  const [cameraVariant, setCameraVariant] = useState<CameraVariantId>("other_camera");
+  const [cameraBearingStr, setCameraBearingStr] = useState("0");
+  const [cameraRangeStr, setCameraRangeStr] = useState("200");
 
   const effectiveTypeId: DeviceTypeId = lockDeviceTypeToRack ? "rack" : deviceTypeId;
 
@@ -158,6 +167,13 @@ export function DeviceForm({
     setTagInput("");
     setLayerId(device.layerId);
     setRackFace(device.rackFace === "back" ? "back" : "front");
+    setCameraVariant(device.cameraVariant ?? "other_camera");
+    setCameraBearingStr(
+      device.cameraBearingDeg != null ? String(Math.round(device.cameraBearingDeg)) : "0"
+    );
+    setCameraRangeStr(
+      device.cameraRangePx != null ? String(device.cameraRangePx) : "200"
+    );
   }, [open, device, lockDeviceTypeToRack]);
 
   if (!open || !device) return null;
@@ -177,12 +193,33 @@ export function DeviceForm({
       .filter((p) => p.key.trim() || p.value.trim())
       .map((p) => ({ key: p.key.trim(), value: p.value.trim() }));
     const brandTrim = brand.trim();
+    const effectiveType = lockDeviceTypeToRack ? "rack" : deviceTypeId;
+    const cameraPatch: Partial<Device> =
+      effectiveType === "camera"
+        ? (() => {
+            const br = parseFloat(cameraBearingStr);
+            const bearing = Number.isFinite(br) ? ((br % 360) + 360) % 360 : 0;
+            const rg = parseFloat(cameraRangeStr);
+            const rangePx = Number.isFinite(rg)
+              ? Math.min(20000, Math.max(1, Math.round(rg)))
+              : 200;
+            return {
+              cameraVariant,
+              cameraBearingDeg: bearing,
+              cameraRangePx: rangePx,
+            };
+          })()
+        : {
+            cameraVariant: undefined,
+            cameraBearingDeg: undefined,
+            cameraRangePx: undefined,
+          };
     onSave({
       name: trimmed,
       layerId,
       description: description.trim(),
       status,
-      deviceTypeId: lockDeviceTypeToRack ? "rack" : deviceTypeId,
+      deviceTypeId: effectiveType,
       rackFace: showRackFaceSelector ? rackFace : undefined,
       brand: brandTrim || undefined,
       ipAddress: ipAddress.trim() || undefined,
@@ -193,6 +230,7 @@ export function DeviceForm({
       properties: cleanedProps,
       portSlots: cleanPortSlots(portSlots),
       tags: dedupeTags(tags),
+      ...cameraPatch,
     });
   };
 
@@ -357,7 +395,25 @@ export function DeviceForm({
                   value={deviceTypeId}
                   onChange={(e) => {
                     const next = e.target.value as DeviceTypeId;
+                    const prev = deviceTypeId;
                     setDeviceTypeId(next);
+                    if (next === "camera" && prev !== "camera") {
+                      if (device.cameraVariant != null) {
+                        setCameraVariant(device.cameraVariant);
+                        setCameraBearingStr(
+                          device.cameraBearingDeg != null
+                            ? String(Math.round(device.cameraBearingDeg))
+                            : "0"
+                        );
+                        setCameraRangeStr(
+                          device.cameraRangePx != null ? String(device.cameraRangePx) : "200"
+                        );
+                      } else {
+                        setCameraVariant("other_camera");
+                        setCameraBearingStr("0");
+                        setCameraRangeStr("200");
+                      }
+                    }
                     const opts = [...getBrandOptionsForDeviceType(next)];
                     const b = brand.trim();
                     if (!b) setBrandIsCustom(false);
@@ -375,6 +431,65 @@ export function DeviceForm({
               </>
             )}
           </div>
+
+          {effectiveTypeId === "camera" && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-bg-card/40 px-3 py-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Camera coverage
+              </h3>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="flex-1 min-w-[10rem]">
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">Variant</label>
+                  <select
+                    value={cameraVariant}
+                    onChange={(e) => setCameraVariant(e.target.value as CameraVariantId)}
+                    className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  >
+                    {CAMERA_VARIANT_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {CAMERA_VARIANT_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-text-muted tabular-nums pb-2 sm:pb-0">
+                  FOV: {CAMERA_VARIANT_FOV_DEG[cameraVariant]}°
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">
+                    Bearing (0–359°)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={359}
+                    step={1}
+                    value={cameraBearingStr}
+                    onChange={(e) => setCameraBearingStr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">0° = north (up), clockwise.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1.5">
+                    Range (px)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20000}
+                    step={1}
+                    value={cameraRangeStr}
+                    onChange={(e) => setCameraRangeStr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">How far the wedge extends on the plan.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-text-muted mb-1.5">Brand</label>

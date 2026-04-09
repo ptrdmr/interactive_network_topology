@@ -4,6 +4,7 @@ import type { Zone } from "@/types/zone";
 import type { Device } from "@/types/device";
 import type { Layer } from "@/types/layer";
 import type { DeviceTypeId } from "@/constants/deviceTypes";
+import { CameraFovLayer } from "./CameraFovLayer";
 import { DeviceMarker } from "./DeviceMarker";
 import { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH } from "@/constants/floorPlan";
 
@@ -22,6 +23,8 @@ interface FloorPlanSVGProps {
   floorPlanImageHref: string;
   /** Resolve device type fill color (defaults + user overrides). */
   resolveDeviceTypeColor: (typeId: DeviceTypeId) => string;
+  /** When true, draw camera field-of-view wedges (below markers). */
+  showCameraFov?: boolean;
   devMode?: boolean;
   placeMode?: boolean;
   onSvgClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -44,6 +47,7 @@ export function FloorPlanSVG({
   deviceHoverEnabled = true,
   floorPlanImageHref,
   resolveDeviceTypeColor,
+  showCameraFov = true,
   devMode,
   placeMode,
   onSvgClick,
@@ -116,6 +120,10 @@ export function FloorPlanSVG({
           </g>
         );
       })}
+
+      {showCameraFov && (
+        <CameraFovLayer devices={devices} selectedDeviceId={selectedDeviceId} />
+      )}
 
       {/* Device markers */}
       {devices.map((device) => (

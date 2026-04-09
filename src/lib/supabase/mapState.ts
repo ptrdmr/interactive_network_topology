@@ -1,6 +1,7 @@
 import type { Layer } from "@/types/layer";
 import type { Device, PortSlot } from "@/types/device";
 import type { FloorPlanDocument } from "@/types/floorPlan";
+import { normalizeCameraVariantId } from "@/constants/cameraVariants";
 import { normalizeDeviceTypeId } from "@/constants/deviceTypes";
 import { getSupabaseBrowserClient } from "./client";
 
@@ -68,6 +69,22 @@ function normalizeInstallDate(raw: unknown): string | undefined {
   return t;
 }
 
+const MAX_CAMERA_RANGE_PX = 20000;
+
+function normalizeCameraBearingDeg(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+  const mod = ((raw % 360) + 360) % 360;
+  return mod;
+}
+
+function normalizeCameraRangePx(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+  const r = Math.round(raw);
+  if (r < 1) return undefined;
+  if (r > MAX_CAMERA_RANGE_PX) return MAX_CAMERA_RANGE_PX;
+  return r;
+}
+
 function normalizeTags(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
@@ -92,6 +109,20 @@ function normalizeDevice(raw: Device): Device {
     (raw as { deviceTypeId?: unknown }).deviceTypeId
   );
   const tags = normalizeTags((raw as { tags?: unknown }).tags);
+
+  const cameraVariant =
+    deviceTypeId === "camera"
+      ? normalizeCameraVariantId((raw as { cameraVariant?: unknown }).cameraVariant)
+      : undefined;
+  const cameraBearingDeg =
+    deviceTypeId === "camera"
+      ? normalizeCameraBearingDeg((raw as { cameraBearingDeg?: unknown }).cameraBearingDeg)
+      : undefined;
+  const cameraRangePx =
+    deviceTypeId === "camera"
+      ? normalizeCameraRangePx((raw as { cameraRangePx?: unknown }).cameraRangePx)
+      : undefined;
+
   return {
     ...raw,
     deviceTypeId,
@@ -103,6 +134,9 @@ function normalizeDevice(raw: Device): Device {
     physicalLocation: trimOptString((raw as { physicalLocation?: unknown }).physicalLocation),
     serialNumber: trimOptString((raw as { serialNumber?: unknown }).serialNumber),
     installDate: normalizeInstallDate((raw as { installDate?: unknown }).installDate),
+    cameraVariant,
+    cameraBearingDeg,
+    cameraRangePx,
   };
 }
 
