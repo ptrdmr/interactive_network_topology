@@ -1,13 +1,18 @@
-"use client";
+﻿"use client";
 
 import { useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MapPin, Palette } from "lucide-react";
 import { FloorPlansHome } from "@/components/home/FloorPlansHome";
 import { ExportImport } from "@/components/ui/ExportImport";
 import { useAppState } from "@/hooks/useAppState";
+import { useAuth } from "@/contexts/auth-context";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { user, authReady, signOut } = useAuth();
   const {
     floorPlans,
     hydrated,
@@ -17,13 +22,18 @@ export default function HomePage() {
     exportCsv,
     importJson,
     cloudSyncEnabled,
+    cloudSyncActive,
+    isGuestMode,
+    guestDeviceCap,
   } = useAppState();
 
   const handleAddFloor = useCallback(() => {
     return addFloorPlan();
   }, [addFloorPlan]);
 
-  if (!hydrated) {
+  const waitingAuth = isSupabaseConfigured() && !authReady;
+
+  if (!hydrated || waitingAuth) {
     return (
       <div className="h-full flex items-center justify-center bg-bg-primary text-text-muted text-sm">
         Loading…
@@ -46,7 +56,32 @@ export default function HomePage() {
               <p className="text-xs text-text-muted">Network map</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-end">
+            {cloudSyncEnabled &&
+              (user ? (
+                <>
+                  <span className="text-[10px] text-text-muted max-w-[140px] truncate hidden sm:inline">
+                    {user.email}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await signOut();
+                      router.refresh();
+                    }}
+                    className="rounded-lg px-3 py-2 text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2 text-xs font-medium text-accent-light hover:bg-bg-hover border border-accent/40 transition-colors"
+                >
+                  Sign in
+                </Link>
+              ))}
             <Link
               href="/settings/device-types"
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60 transition-colors"
@@ -62,6 +97,16 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-16">
+        {isGuestMode && (
+          <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <strong className="font-medium">Try mode</strong> — your map stays in this browser tab only (up to{" "}
+            {guestDeviceCap} devices).{" "}
+            <Link href="/login" className="text-accent-light underline hover:no-underline">
+              Sign in
+            </Link>{" "}
+            for cloud backup, topology view, and full maps.
+          </div>
+        )}
         <FloorPlansHome
           floorPlans={floorPlans}
           onAddFloor={handleAddFloor}
@@ -74,9 +119,14 @@ export default function HomePage() {
             Project data
           </h3>
           <ExportImport onExport={exportCsv} onImport={importJson} />
-          {cloudSyncEnabled && (
+          {cloudSyncActive && (
             <p className="text-[10px] text-text-muted mt-3">
-              Cloud sync: map data is saved to Supabase (shared for all visitors).
+              Cloud sync: your map is saved to Supabase for this signed-in account.
+            </p>
+          )}
+          {cloudSyncEnabled && !cloudSyncActive && (
+            <p className="text-[10px] text-text-muted mt-3">
+              Sign in to sync this project to your account in Supabase.
             </p>
           )}
         </div>

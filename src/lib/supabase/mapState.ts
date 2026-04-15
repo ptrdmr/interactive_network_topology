@@ -226,7 +226,30 @@ function ensureAtLeastOneFloor(state: PersistedMapState): PersistedMapState {
 }
 
 export function parsePersistedMapState(raw: unknown): PersistedMapState | null {
-  if (!raw || typeof raw !== "object") return null;
+  /** Supabase table export / SQL result: `[{ "id": "...", "data": { floorPlans... } }]`. */
+  if (Array.isArray(raw) && raw.length > 0) {
+    const first = raw[0];
+    if (first && typeof first === "object" && "data" in first) {
+      return parsePersistedMapState((first as { data: unknown }).data);
+    }
+  }
+
+  /** Single row object: `{ "id": "default", "data": { ... } }` without top-level `floorPlans`. */
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    const nested = o.data;
+    if (
+      nested &&
+      typeof nested === "object" &&
+      !Array.isArray(nested) &&
+      !Array.isArray(o.floorPlans) &&
+      Array.isArray((nested as Record<string, unknown>).floorPlans)
+    ) {
+      return parsePersistedMapState(nested);
+    }
+  }
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
 
   if (isLegacyV1Shape(o)) {
@@ -256,16 +279,31 @@ export function parsePersistedMapState(raw: unknown): PersistedMapState | null {
   return null;
 }
 
-const ROW_ID = "default";
+export function hasSubstantiveLocalState(state: PersistedMapState): boolean {
+  if (state.floorPlans.length > 1) return true;
+  if (Object.keys(state.deviceTypeColorOverrides ?? {}).length > 0) return true;
+  const fp = state.floorPlans[0];
+  if (!fp) return false;
+  if (fp.floorPlanDataUrl) return true;
+  if (fp.layers.length > 0 || fp.devices.length > 0) return true;
+  if (fp.name.trim() && fp.name.trim() !== "Main floor") return true;
+  return false;
+}
 
-export async function fetchMapStateFromSupabase(): Promise<PersistedMapState | null> {
+export function countAllDevices(state: PersistedMapState): number {
+  return state.floorPlans.reduce((n, fp) => n + fp.devices.length, 0);
+}
+
+export async function fetchMapStateFromSupabase(
+  userId: string
+): Promise<PersistedMapState | null> {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
-    .from("map_state")
+    .from("user_map_state")
     .select("data")
-    .eq("id", ROW_ID)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -277,13 +315,14 @@ export async function fetchMapStateFromSupabase(): Promise<PersistedMapState | n
 }
 
 export async function saveMapStateToSupabase(
+  userId: string,
   state: PersistedMapState
 ): Promise<boolean> {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) return false;
 
   const payload = {
-    id: ROW_ID,
+    user_id: userId,
     data: {
       floorPlans: state.floorPlans,
       activeFloorPlanId: state.activeFloorPlanId,
@@ -292,8 +331,8 @@ export async function saveMapStateToSupabase(
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("map_state").upsert(payload, {
-    onConflict: "id",
+  const { error } = await supabase.from("user_map_state").upsert(payload, {
+    onConflict: "user_id",
   });
 
   if (error) {

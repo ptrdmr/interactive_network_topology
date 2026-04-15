@@ -19,16 +19,21 @@ import {
 } from "@/constants/deviceTypes";
 import { normalizeFloorPlanImage } from "@/lib/floorPlanImage";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/auth-context";
 import { buildDeviceInventoryCsv } from "@/lib/exportCsv";
 import {
   emptyPersistedMapState,
   parsePersistedMapState,
   fetchMapStateFromSupabase,
   saveMapStateToSupabase,
+  hasSubstantiveLocalState,
+  countAllDevices,
   type PersistedMapState,
 } from "@/lib/supabase/mapState";
 
 const STORAGE_KEY = "concourse-map-data";
+const GUEST_DEMO_KEY = "concourse-guest-demo";
+const GUEST_DEVICE_CAP = 10;
 const SUPABASE_SAVE_DEBOUNCE_MS = 800;
 
 function loadFromStorage(): PersistedMapState {
@@ -53,11 +58,39 @@ function saveToStorage(state: PersistedMapState) {
   }
 }
 
+function loadGuestDemo(): PersistedMapState {
+  if (typeof window === "undefined") return emptyPersistedMapState();
+  try {
+    const raw = sessionStorage.getItem(GUEST_DEMO_KEY);
+    if (!raw) return emptyPersistedMapState();
+    const parsed = JSON.parse(raw) as unknown;
+    return parsePersistedMapState(parsed) ?? emptyPersistedMapState();
+  } catch {
+    return emptyPersistedMapState();
+  }
+}
+
+function saveGuestSession(state: PersistedMapState) {
+  try {
+    sessionStorage.setItem(
+      GUEST_DEMO_KEY,
+      JSON.stringify({
+        floorPlans: state.floorPlans,
+        activeFloorPlanId: state.activeFloorPlanId,
+        deviceTypeColorOverrides: state.deviceTypeColorOverrides,
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
 function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function useAppStateImpl() {
+  const { user, authReady } = useAuth();
   const [floorPlans, setFloorPlans] = useState<FloorPlanDocument[]>([]);
   const [activeFloorPlanId, setActiveFloorPlanId] = useState<string | null>(null);
   const [deviceTypeColorOverrides, setDeviceTypeColorOverrides] = useState<
@@ -75,6 +108,8 @@ function useAppStateImpl() {
   const initialPersistedSnapshotRef = useRef<string | null>(null);
 
   const cloudSyncEnabled = isSupabaseConfigured();
+  const guestMode = cloudSyncEnabled && authReady && !user;
+  const cloudSyncActive = cloudSyncEnabled && !!user;
 
   const activeFloor = useMemo(() => {
     if (floorPlans.length === 0) return null;
@@ -94,18 +129,36 @@ function useAppStateImpl() {
   );
 
   useEffect(() => {
+    if (!authReady) return;
+
     let cancelled = false;
+    setHydrated(false);
 
     (async () => {
-      const local = loadFromStorage();
-      let initial: PersistedMapState = local;
+      let initial: PersistedMapState;
 
-      if (cloudSyncEnabled) {
-        const remote = await fetchMapStateFromSupabase();
-        if (!cancelled && remote) {
+      if (!cloudSyncEnabled) {
+        initial = loadFromStorage();
+      } else if (user) {
+        try {
+          sessionStorage.removeItem(GUEST_DEMO_KEY);
+        } catch {
+          /* ignore */
+        }
+        const local = loadFromStorage();
+        const remote = await fetchMapStateFromSupabase(user.id);
+        if (cancelled) return;
+        if (remote) {
           initial = remote;
           saveToStorage(initial);
+        } else if (hasSubstantiveLocalState(local)) {
+          initial = local;
+          void saveMapStateToSupabase(user.id, initial);
+        } else {
+          initial = emptyPersistedMapState();
         }
+      } else {
+        initial = loadGuestDemo();
       }
 
       if (cancelled) return;
@@ -123,7 +176,7 @@ function useAppStateImpl() {
     return () => {
       cancelled = true;
     };
-  }, [cloudSyncEnabled]);
+  }, [authReady, user?.id, cloudSyncEnabled]);
 
   useEffect(() => {
     if (
@@ -137,15 +190,20 @@ function useAppStateImpl() {
 
   useEffect(() => {
     if (!hydrated) return;
-    saveToStorage({
+    const payload: PersistedMapState = {
       floorPlans,
       activeFloorPlanId,
       deviceTypeColorOverrides,
-    });
-  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated]);
+    };
+    if (guestMode) {
+      saveGuestSession(payload);
+      return;
+    }
+    saveToStorage(payload);
+  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated, guestMode]);
 
   useEffect(() => {
-    if (!hydrated || !cloudSyncEnabled) return;
+    if (!hydrated || !cloudSyncActive || !user) return;
 
     const payload: PersistedMapState = {
       floorPlans,
@@ -162,13 +220,20 @@ function useAppStateImpl() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      void saveMapStateToSupabase(payload);
+      void saveMapStateToSupabase(user.id, payload);
     }, SUPABASE_SAVE_DEBOUNCE_MS);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated, cloudSyncEnabled]);
+  }, [
+    floorPlans,
+    activeFloorPlanId,
+    deviceTypeColorOverrides,
+    hydrated,
+    cloudSyncActive,
+    user,
+  ]);
 
   const resolveDeviceTypeColor = useCallback(
     (typeId: DeviceTypeId) =>
@@ -368,6 +433,9 @@ function useAppStateImpl() {
 
   const addDevice = useCallback(
     (device: Omit<Device, "id">) => {
+      if (guestMode && allDevicesFlat.length >= GUEST_DEVICE_CAP) {
+        return null;
+      }
       const devId = newId("device");
       patchActiveFloor((fp) => ({
         ...fp,
@@ -375,7 +443,7 @@ function useAppStateImpl() {
       }));
       return devId;
     },
-    [patchActiveFloor]
+    [guestMode, allDevicesFlat.length, patchActiveFloor]
   );
 
   const updateDevice = useCallback((id: string, patch: Partial<Device>) => {
@@ -415,30 +483,41 @@ function useAppStateImpl() {
     URL.revokeObjectURL(url);
   }, [floorPlans]);
 
-  const importJson = useCallback((file: File) => {
-    return new Promise<void>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const parsed = JSON.parse(reader.result as string) as unknown;
-          const state = parsePersistedMapState(parsed);
-          if (!state) {
-            reject(new Error("Invalid file: expected floor plans and devices"));
-            return;
+  const importJson = useCallback(
+    (file: File) => {
+      return new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result as string) as unknown;
+            const state = parsePersistedMapState(parsed);
+            if (!state) {
+              reject(new Error("Invalid file: expected floor plans and devices"));
+              return;
+            }
+            if (guestMode && countAllDevices(state) > GUEST_DEVICE_CAP) {
+              reject(
+                new Error(
+                  "Try mode allows up to 10 devices. Sign in to import larger maps."
+                )
+              );
+              return;
+            }
+            setFloorPlans(state.floorPlans);
+            setActiveFloorPlanId(state.activeFloorPlanId);
+            setDeviceTypeColorOverrides(state.deviceTypeColorOverrides ?? {});
+            setActiveLayerId(null);
+            resolve();
+          } catch (e) {
+            reject(e);
           }
-          setFloorPlans(state.floorPlans);
-          setActiveFloorPlanId(state.activeFloorPlanId);
-          setDeviceTypeColorOverrides(state.deviceTypeColorOverrides ?? {});
-          setActiveLayerId(null);
-          resolve();
-        } catch (e) {
-          reject(e);
-        }
-      };
-      reader.onerror = () => reject(reader.error);
-      reader.readAsText(file);
-    });
-  }, []);
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+      });
+    },
+    [guestMode]
+  );
 
   const resetAll = useCallback(() => {
     const empty = emptyPersistedMapState();
@@ -508,7 +587,11 @@ function useAppStateImpl() {
     activeLayerId,
     setActiveLayerId,
     hydrated,
+    authReady,
     cloudSyncEnabled,
+    cloudSyncActive,
+    isGuestMode: guestMode,
+    guestDeviceCap: GUEST_DEVICE_CAP,
     layerById,
     deviceById,
     childrenOf,

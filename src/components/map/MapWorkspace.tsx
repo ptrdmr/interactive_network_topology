@@ -71,6 +71,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
     uploadFloorPlanFromFile,
     clearFloorPlan,
     cloudSyncEnabled,
+    isGuestMode,
     resolveDeviceTypeColor,
   } = useAppState();
 
@@ -291,6 +292,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         portSlots: [],
         tags: [],
       });
+      if (!id) return;
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
       setDeviceFormId(id);
@@ -323,6 +325,7 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         portSlots: [],
         tags: [],
       });
+      if (!id) return;
       setSelectedDeviceId(null);
       setDeviceFormMode("create");
       setDeviceFormId(id);
@@ -480,11 +483,15 @@ export function MapWorkspace({ floorId }: MapWorkspaceProps) {
         hasCustomFloorPlan={!!floorPlanDataUrl}
         onFloorPlanUpload={uploadFloorPlanFromFile}
         onFloorPlanReset={clearFloorPlan}
-        alternateView={{
-          href: `/topology/${floorId}`,
-          label: "Topology view",
-          icon: "network",
-        }}
+        alternateView={
+          isGuestMode
+            ? null
+            : {
+                href: `/topology/${floorId}`,
+                label: "Topology view",
+                icon: "network",
+              }
+        }
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
         expandedWidthPx={leftExpandedPx}

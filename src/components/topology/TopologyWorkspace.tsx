@@ -208,7 +208,7 @@ export function TopologyWorkspace({ floorId }: TopologyWorkspaceProps) {
         portSlots: [],
         tags: [],
       });
-      setSelectedDeviceId(id);
+      if (id) setSelectedDeviceId(id);
     },
     [addDevice, devices]
   );
