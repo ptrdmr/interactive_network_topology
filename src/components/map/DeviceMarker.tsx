@@ -44,8 +44,17 @@ export function DeviceMarker({
 }: DeviceMarkerProps) {
   const r = isSelected ? 14 : 10;
   const mapLabel = device.mapLabel?.trim() ?? "";
-  const labelY = device.position.y + r + 16;
-  const labelFontSize = isSelected ? 9 : 7;
+  const usePill = showLabel && !!mapLabel;
+
+  // Pill dimensions — height matches the circle diameter; width adapts to text length.
+  const pillFontSize = isSelected ? 14 : 11;
+  const pillH = r * 2;
+  const pillW = Math.max(pillH, mapLabel.length * pillFontSize * 0.65 + 12);
+  const pillX = device.position.x - pillW / 2;
+  const pillY = device.position.y - pillH / 2;
+
+  const cx = device.position.x;
+  const cy = device.position.y;
 
   return (
     <g
@@ -65,8 +74,8 @@ export function DeviceMarker({
       {/* Pulse ring for maintenance */}
       {device.status === "maintenance" && (
         <circle
-          cx={device.position.x}
-          cy={device.position.y}
+          cx={cx}
+          cy={cy}
           r={r + 6}
           fill="none"
           stroke="#f59e0b"
@@ -76,22 +85,11 @@ export function DeviceMarker({
         />
       )}
 
-      {/* Layer ring (map layer color) — outermost semantic ring */}
-      <circle
-        cx={device.position.x}
-        cy={device.position.y}
-        r={r + 8}
-        fill="none"
-        stroke={layerRingColor}
-        strokeWidth="2.5"
-        opacity="0.95"
-      />
-
       {/* Status ring (offline / maintenance) */}
       {device.status !== "online" && (
         <circle
-          cx={device.position.x}
-          cy={device.position.y}
+          cx={cx}
+          cy={cy}
           r={r + 3}
           fill="none"
           stroke={statusRing[device.status]}
@@ -102,8 +100,8 @@ export function DeviceMarker({
       {/* Selection ring */}
       {isSelected && (
         <circle
-          cx={device.position.x}
-          cy={device.position.y}
+          cx={cx}
+          cy={cy}
           r={r + 5}
           fill="none"
           stroke="#ffffff"
@@ -112,43 +110,70 @@ export function DeviceMarker({
         />
       )}
 
-      {/* Main marker — device type fill */}
-      <circle
-        cx={device.position.x}
-        cy={device.position.y}
-        r={r}
-        fill={fillColor}
-        stroke="#0a0f1a"
-        strokeWidth="2.5"
-        opacity="0.95"
-      />
+      {usePill ? (
+        <>
+          {/* Pill badge replaces the circle — layer ring color used as border */}
+          <rect
+            x={pillX}
+            y={pillY}
+            width={pillW}
+            height={pillH}
+            rx={pillH / 2}
+            fill={fillColor}
+            stroke={layerRingColor}
+            strokeWidth="2.5"
+            opacity="0.95"
+          />
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="#ffffff"
+            stroke="#0a0f1a"
+            strokeWidth="1.5"
+            paintOrder="stroke"
+            fontSize={pillFontSize}
+            fontWeight="bold"
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+            className="select-none"
+            style={{ pointerEvents: "none" }}
+          >
+            {mapLabel}
+          </text>
+        </>
+      ) : (
+        <>
+          {/* Layer ring (map layer color) — outermost semantic ring */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r + 8}
+            fill="none"
+            stroke={layerRingColor}
+            strokeWidth="2.5"
+            opacity="0.95"
+          />
 
-      <circle
-        cx={device.position.x}
-        cy={device.position.y}
-        r={3}
-        fill="#0a0f1a"
-        opacity="0.5"
-      />
+          {/* Main marker — device type fill */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill={fillColor}
+            stroke="#0a0f1a"
+            strokeWidth="2.5"
+            opacity="0.95"
+          />
 
-      {showLabel && mapLabel && (
-        <text
-          x={device.position.x}
-          y={labelY}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill={fillColor}
-          stroke="#ffffff"
-          strokeWidth="2.5"
-          paintOrder="stroke"
-          fontSize={labelFontSize}
-          fontWeight="bold"
-          fontFamily="ui-sans-serif, system-ui, sans-serif"
-          className="select-none"
-          style={{ pointerEvents: "none" }}
-        >
-          {mapLabel}
-        </text>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={3}
+            fill="#0a0f1a"
+            opacity="0.5"
+          />
+        </>
       )}
     </g>
   );
