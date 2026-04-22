@@ -13,6 +13,8 @@ interface DeviceMarkerProps {
   /** When false, hover popover is suppressed (e.g. reposition mode). */
   hoverEnabled?: boolean;
   onHoverChange?: (device: Device | null) => void;
+  /** When true and `device.mapLabel` is set, show label below the marker. */
+  showLabel?: boolean;
 }
 
 const statusRing: Record<DeviceStatus, string> = {
@@ -38,8 +40,12 @@ export function DeviceMarker({
   onClick,
   hoverEnabled = true,
   onHoverChange,
+  showLabel = false,
 }: DeviceMarkerProps) {
   const r = isSelected ? 14 : 10;
+  const mapLabel = device.mapLabel?.trim() ?? "";
+  const labelY = device.position.y + r + 16;
+  const labelFontSize = isSelected ? 9 : 7;
 
   return (
     <g
@@ -124,6 +130,26 @@ export function DeviceMarker({
         fill="#0a0f1a"
         opacity="0.5"
       />
+
+      {showLabel && mapLabel && (
+        <text
+          x={device.position.x}
+          y={labelY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={fillColor}
+          stroke="#ffffff"
+          strokeWidth="2.5"
+          paintOrder="stroke"
+          fontSize={labelFontSize}
+          fontWeight="bold"
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+          className="select-none"
+          style={{ pointerEvents: "none" }}
+        >
+          {mapLabel}
+        </text>
+      )}
     </g>
   );
 }

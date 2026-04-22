@@ -30,18 +30,22 @@ import {
   countAllDevices,
   type PersistedMapState,
 } from "@/lib/supabase/mapState";
+import {
+  MAP_DATA_STORAGE_KEY,
+  mapStorageKeyForUser,
+  removeLegacySharedMapStorage,
+} from "@/lib/mapLocalStorage";
 
-const STORAGE_KEY = "concourse-map-data";
 const GUEST_DEMO_KEY = "concourse-guest-demo";
 const GUEST_DEVICE_CAP = 10;
 const SUPABASE_SAVE_DEBOUNCE_MS = 800;
 
-function loadFromStorage(): PersistedMapState {
+function loadFromStorageKey(key: string): PersistedMapState {
   if (typeof window === "undefined") {
     return emptyPersistedMapState();
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return emptyPersistedMapState();
     const parsed = JSON.parse(raw) as unknown;
     return parsePersistedMapState(parsed) ?? emptyPersistedMapState();
@@ -50,12 +54,27 @@ function loadFromStorage(): PersistedMapState {
   }
 }
 
-function saveToStorage(state: PersistedMapState) {
+function saveToStorageKey(key: string, state: PersistedMapState) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        floorPlans: state.floorPlans,
+        activeFloorPlanId: state.activeFloorPlanId,
+        deviceTypeColorOverrides: state.deviceTypeColorOverrides ?? {},
+      })
+    );
   } catch {
     // ignore quota / private mode
   }
+}
+
+function loadFromStorage(): PersistedMapState {
+  return loadFromStorageKey(MAP_DATA_STORAGE_KEY);
+}
+
+function saveToStorage(state: PersistedMapState) {
+  saveToStorageKey(MAP_DATA_STORAGE_KEY, state);
 }
 
 function loadGuestDemo(): PersistedMapState {
@@ -145,18 +164,20 @@ function useAppStateImpl() {
         } catch {
           /* ignore */
         }
-        const local = loadFromStorage();
+        const userKey = mapStorageKeyForUser(user.id);
+        const local = loadFromStorageKey(userKey);
         const remote = await fetchMapStateFromSupabase(user.id);
         if (cancelled) return;
         if (remote) {
           initial = remote;
-          saveToStorage(initial);
         } else if (hasSubstantiveLocalState(local)) {
           initial = local;
           void saveMapStateToSupabase(user.id, initial);
         } else {
           initial = emptyPersistedMapState();
         }
+        saveToStorageKey(userKey, initial);
+        removeLegacySharedMapStorage();
       } else {
         initial = loadGuestDemo();
       }
@@ -199,8 +220,20 @@ function useAppStateImpl() {
       saveGuestSession(payload);
       return;
     }
+    if (cloudSyncActive && user) {
+      saveToStorageKey(mapStorageKeyForUser(user.id), payload);
+      return;
+    }
     saveToStorage(payload);
-  }, [floorPlans, activeFloorPlanId, deviceTypeColorOverrides, hydrated, guestMode]);
+  }, [
+    floorPlans,
+    activeFloorPlanId,
+    deviceTypeColorOverrides,
+    hydrated,
+    guestMode,
+    cloudSyncActive,
+    user,
+  ]);
 
   useEffect(() => {
     if (!hydrated || !cloudSyncActive || !user) return;

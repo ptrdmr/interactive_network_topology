@@ -84,6 +84,7 @@ export function DeviceForm({
   lockDeviceTypeToRack = false,
 }: DeviceFormProps) {
   const [name, setName] = useState("");
+  const [mapLabel, setMapLabel] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<DeviceStatus>("online");
   const [properties, setProperties] = useState<DeviceProperty[]>([]);
@@ -132,6 +133,7 @@ export function DeviceForm({
   useEffect(() => {
     if (!open || !device) return;
     setName(device.name);
+    setMapLabel(device.mapLabel ?? "");
     setDescription(device.description);
     setStatus(device.status);
     setProperties(
@@ -216,6 +218,7 @@ export function DeviceForm({
           };
     onSave({
       name: trimmed,
+      mapLabel: mapLabel.trim().slice(0, 4) || undefined,
       layerId,
       description: description.trim(),
       status,
@@ -320,6 +323,22 @@ export function DeviceForm({
               className="w-full px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
               placeholder="Device name"
               autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5">
+              Map label (optional)
+            </label>
+            <p className="text-[10px] text-text-muted mb-1.5">
+              1–4 characters shown on the map marker. Leave blank for none.
+            </p>
+            <input
+              value={mapLabel}
+              onChange={(e) => setMapLabel(e.target.value.slice(0, 4))}
+              className="w-full max-w-[8rem] px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text-primary font-semibold focus:outline-none focus:ring-2 focus:ring-accent/50"
+              placeholder="e.g. AP1"
+              maxLength={4}
             />
           </div>
 

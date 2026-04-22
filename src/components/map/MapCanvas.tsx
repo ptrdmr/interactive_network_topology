@@ -12,6 +12,8 @@ import type { Layer } from "@/types/layer";
 import type { DeviceTypeId } from "@/constants/deviceTypes";
 import { REPOSITION_STEP_PX } from "@/constants/reposition";
 
+const SHOW_MAP_LABELS_STORAGE_KEY = "concourse-show-map-labels";
+
 interface MapCanvasProps {
   zones: Zone[];
   devices: Device[];
@@ -53,6 +55,7 @@ export function MapCanvas({
   const [hoveredDeviceId, setHoveredDeviceId] = useState<string | null>(null);
   const hoverClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [devMode, setDevMode] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
   const [clickCoords, setClickCoords] = useState<{ x: number; y: number } | null>(null);
   const [coordLog, setCoordLog] = useState<{ x: number; y: number }[]>([]);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -73,6 +76,28 @@ export function MapCanvas({
   useLayoutEffect(() => {
     scheduleFit();
   }, [scheduleFit, floorPlanImageHref]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SHOW_MAP_LABELS_STORAGE_KEY) === "true") {
+        setShowLabels(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleToggleLabels = useCallback(() => {
+    setShowLabels((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SHOW_MAP_LABELS_STORAGE_KEY, next ? "true" : "false");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const c = containerRef.current;
@@ -199,6 +224,7 @@ export function MapCanvas({
               floorPlanImageHref={floorPlanImageHref}
               resolveDeviceTypeColor={resolveDeviceTypeColor}
               showCameraFov={showCameraFov}
+              showLabels={showLabels}
               devMode={devMode}
               placeMode={placeMode && !devMode}
               onSvgClick={handleSvgClick}
@@ -221,7 +247,14 @@ export function MapCanvas({
         </div>
       )}
 
-      <MapControls onZoomIn={zoomIn} onZoomOut={zoomOut} onResetView={scheduleFit} scale={transform.scale} />
+      <MapControls
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onResetView={scheduleFit}
+        scale={transform.scale}
+        showLabels={showLabels}
+        onToggleLabels={handleToggleLabels}
+      />
 
       {/* Dev mode toggle */}
       <button

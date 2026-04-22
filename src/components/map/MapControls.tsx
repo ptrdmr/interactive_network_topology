@@ -1,19 +1,44 @@
 "use client";
 
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Tag } from "lucide-react";
 
 interface MapControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetView: () => void;
   scale: number;
+  showLabels: boolean;
+  onToggleLabels: () => void;
 }
 
-export function MapControls({ onZoomIn, onZoomOut, onResetView, scale }: MapControlsProps) {
+export function MapControls({
+  onZoomIn,
+  onZoomOut,
+  onResetView,
+  scale,
+  showLabels,
+  onToggleLabels,
+}: MapControlsProps) {
   const percent = Math.round(scale * 100);
 
   return (
     <div className="absolute z-10 flex flex-col items-center gap-1 bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]">
+      <button
+        type="button"
+        onClick={onToggleLabels}
+        className={`p-2.5 rounded-lg bg-bg-card/90 backdrop-blur border transition-colors ${
+          showLabels
+            ? "border-accent-light text-accent-light bg-accent/20"
+            : "border-border text-text-primary hover:bg-bg-hover"
+        }`}
+        title={showLabels ? "Hide map labels" : "Show map labels"}
+        aria-pressed={showLabels}
+      >
+        <Tag className="w-4 h-4" />
+      </button>
+
+      <div className="w-px h-2 bg-border" />
+
       <button
         type="button"
         onClick={onZoomIn}

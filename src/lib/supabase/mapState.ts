@@ -61,6 +61,12 @@ function trimOptString(raw: unknown): string | undefined {
   return t === "" ? undefined : t;
 }
 
+function normalizeMapLabel(raw: unknown): string | undefined {
+  const t = trimOptString(raw);
+  if (!t) return undefined;
+  return t.length > 4 ? t.slice(0, 4) : t;
+}
+
 /** Keep only plausible `YYYY-MM-DD` values from persisted JSON. */
 function normalizeInstallDate(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
@@ -128,6 +134,7 @@ function normalizeDevice(raw: Device): Device {
     deviceTypeId,
     tags,
     portSlots,
+    mapLabel: normalizeMapLabel((raw as { mapLabel?: unknown }).mapLabel),
     brand: trimOptString((raw as { brand?: unknown }).brand),
     ipAddress: trimOptString((raw as { ipAddress?: unknown }).ipAddress),
     macAddress: trimOptString((raw as { macAddress?: unknown }).macAddress),

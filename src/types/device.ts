@@ -21,6 +21,8 @@ export interface PortSlot {
 export interface Device {
   id: string;
   name: string;
+  /** Short text (1–4 chars) shown below the map marker when map labels are enabled. */
+  mapLabel?: string;
   layerId: string;
   /** Map marker fill color family; layer color draws as an outer ring. */
   deviceTypeId: DeviceTypeId;

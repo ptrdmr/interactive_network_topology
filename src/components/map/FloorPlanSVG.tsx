@@ -25,6 +25,8 @@ interface FloorPlanSVGProps {
   resolveDeviceTypeColor: (typeId: DeviceTypeId) => string;
   /** When true, draw camera field-of-view wedges (below markers). */
   showCameraFov?: boolean;
+  /** When true, show `mapLabel` text under each device marker that has one. */
+  showLabels?: boolean;
   devMode?: boolean;
   placeMode?: boolean;
   onSvgClick?: (e: React.MouseEvent<SVGSVGElement>) => void;
@@ -48,6 +50,7 @@ export function FloorPlanSVG({
   floorPlanImageHref,
   resolveDeviceTypeColor,
   showCameraFov = true,
+  showLabels = false,
   devMode,
   placeMode,
   onSvgClick,
@@ -136,6 +139,7 @@ export function FloorPlanSVG({
           onClick={onDeviceClick}
           hoverEnabled={deviceHoverEnabled}
           onHoverChange={(d) => onDeviceHover(d?.id ?? null)}
+          showLabel={showLabels}
         />
       ))}
 
