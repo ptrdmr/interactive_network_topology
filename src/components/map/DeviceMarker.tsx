@@ -47,8 +47,8 @@ export function DeviceMarker({
   const usePill = showLabel && !!mapLabel;
 
   // Pill dimensions — height matches the circle diameter; width adapts to text length.
-  const pillFontSize = isSelected ? 14 : 11;
-  const pillH = r * 2;
+  const pillFontSize = isSelected ? 18 : 16;
+  const pillH = Math.max(r * 2, pillFontSize + 6);
   const pillW = Math.max(pillH, mapLabel.length * pillFontSize * 0.65 + 12);
   const pillX = device.position.x - pillW / 2;
   const pillY = device.position.y - pillH / 2;
