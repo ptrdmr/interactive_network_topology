@@ -307,18 +307,30 @@ export async function fetchMapStateFromSupabase(
   const supabase = getSupabaseBrowserClient();
   if (!supabase) return null;
 
+  // Try the user's own row first
   const { data, error } = await supabase
-    .from("user_map_state")
+    .from("map_state")
     .select("data")
-    .eq("user_id", userId)
+    .eq("id", userId)
     .maybeSingle();
 
   if (error) {
     console.warn("[Supabase] load failed:", error.message);
     return null;
   }
-  if (!data?.data) return null;
-  return parsePersistedMapState(data.data);
+
+  if (data?.data) return parsePersistedMapState(data.data);
+
+  // Fall back to the legacy shared row so existing data migrates automatically
+  const { data: legacy } = await supabase
+    .from("map_state")
+    .select("data")
+    .eq("id", "default")
+    .maybeSingle();
+
+  if (legacy?.data) return parsePersistedMapState(legacy.data);
+
+  return null;
 }
 
 export async function saveMapStateToSupabase(
@@ -329,7 +341,7 @@ export async function saveMapStateToSupabase(
   if (!supabase) return false;
 
   const payload = {
-    user_id: userId,
+    id: userId,
     data: {
       floorPlans: state.floorPlans,
       activeFloorPlanId: state.activeFloorPlanId,
@@ -338,8 +350,8 @@ export async function saveMapStateToSupabase(
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("user_map_state").upsert(payload, {
-    onConflict: "user_id",
+  const { error } = await supabase.from("map_state").upsert(payload, {
+    onConflict: "id",
   });
 
   if (error) {
